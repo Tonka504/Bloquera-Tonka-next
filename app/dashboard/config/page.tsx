@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 
 export default function ConfigPage() {
   const [config, setConfig] = useState({
-    bloquesPorBolsa: 42,
-    arenaPor100Bloques: 0.40,
-    precioBloque4: 22,
-    precioBloque5: 25,
-    precioBloque6: 28,
+    bloquesPorBolsa: 36,
+    arenaPor100Bloques: 0.30,
+    precioBloque4: 19,
+    precioBloque5: 20,
+    precioBloque6: 22,
   });
 
   const guardarConfig = () => {
