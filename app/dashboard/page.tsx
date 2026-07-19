@@ -20,16 +20,7 @@ import Link from 'next/link';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
-  const [resumen, setResumen] = useState<{
-    ventas: number;
-    gastos: number;
-    balance: number;
-    por_cobrar: number;
-    pedidosRecientes: any[];
-    ventasPorMes: any[];
-    stockBajo: any[];
-    facturasPendientes: any[];
-  }>({
+  const [resumen, setResumen] = useState({
     ventas: 0,
     gastos: 0,
     balance: 0,
@@ -53,13 +44,11 @@ export default function Dashboard() {
   }, [router]);
 
   const cargarDatos = async () => {
-    const result = await getDashboardResumen();
+    const result = await getDashboardResumen() as any;
 
     if (result.success && result.data) {
-      setResumen(result.data);
-    } else {
-      console.error('Error al cargar dashboard:', (result as any).message || 'Error desconocido');
-    }
+    setResumen(result.data);
+}
     setLoading(false);
   };
 
@@ -73,10 +62,12 @@ export default function Dashboard() {
   // Calcular máximo para el gráfico
   const maxVentas = Math.max(...resumen.ventasPorMes.map((v: any) => Number(v.total)), 1);
 
-  // Formatear mes
+  // Formatear mes (acepta "2026-02" o "2026-02-01")
   const formatMes = (mesStr: string) => {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const date = new Date(mesStr);
+    // Si viene como "2026-02", agregar día para crear fecha válida
+    const fechaStr = mesStr.length === 7 ? mesStr + '-01' : mesStr;
+    const date = new Date(fechaStr);
     return meses[date.getMonth()] || mesStr;
   };
 
