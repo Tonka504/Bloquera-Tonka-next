@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏗️ Bloquera Tonka - Versión Mejorada
 
-## Getting Started
+## ✅ Cambios realizados
 
-First, run the development server:
+### Dashboard
+- ✅ Gráfico de ventas por mes (últimos 6 meses)
+- ✅ Alertas de stock bajo
+- ✅ Pedidos recientes
+- ✅ Facturas pendientes de cobro
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Pedidos
+- ✅ Búsqueda por cliente, producto o ID
+- ✅ Modal de despacho COMPLETO con:
+  - Fecha de despacho
+  - Identidad del cliente
+  - RTN
+  - Dirección
+- ✅ Guarda correctamente el estado de pago y anticipo
+- ✅ Validaciones en formularios (cantidad > 0, precio > 0, anticipo válido)
+- ✅ Modal de confirmación antes de eliminar
+- ✅ Muestra total calculado y estado de pago en la tabla
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Facturas
+- ✅ Búsqueda por cliente, producto o número
+- ✅ Filtros por estado (Pagado, Con Anticipo, Pendiente)
+- ✅ Filtros por rango de fechas
+- ✅ Paginación (10 items por página)
+- ✅ Cambiar estado de pago directamente desde la tabla
+- ✅ Muestra saldo pendiente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Inventario
+- ✅ Alertas de stock bajo en la página
+- ✅ Indicadores de estado (Normal, Bajo, Agotado) en cada producto
+- ✅ Modal de historial de movimientos
+- ✅ Registro automático de movimientos en historial_inventario
+- ✅ Validaciones en formularios
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Gastos
+- ✅ Búsqueda por descripción
+- ✅ Filtro por categoría
+- ✅ Total de gastos filtrados
+- ✅ Modal de confirmación antes de eliminar
+- ✅ Validaciones en formularios
+- ✅ Colores diferentes por categoría
 
-## Learn More
+### Reportes
+- ✅ Gráfico de ventas por mes
+- ✅ Gráfico de gastos por categoría (barras horizontales)
+- ✅ Top 5 clientes por ventas
+- ✅ Todos los KPIs principales
 
-To learn more about Next.js, take a look at the following resources:
+### Configuración
+- ✅ Conectada a la base de datos (lee y guarda)
+- ✅ Carga configuración real al abrir
+- ✅ Guarda cambios en la DB
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### PDF de Facturas
+- ✅ Muestra anticipo recibido
+- ✅ Muestra saldo pendiente si existe
+- ✅ Muestra dirección del cliente
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🗄️ Migraciones necesarias
 
-## Deploy on Vercel
+Ejecuta el archivo `migraciones.sql` en tu base de datos PostgreSQL antes de usar la app mejorada.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📁 Archivos modificados/creados
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `app/actions.ts` — Nuevas funciones del servidor
+- `app/dashboard/page.tsx` — Dashboard enriquecido
+- `app/dashboard/pedidos/page.tsx` — Pedidos mejorados
+- `app/dashboard/facturas/page.tsx` — Facturas con filtros y paginación
+- `app/dashboard/inventario/page.tsx` — Inventario con alertas e historial
+- `app/dashboard/gastos/page.tsx` — Gastos con búsqueda y filtros
+- `app/dashboard/reportes/page.tsx` — Reportes con gráficos
+- `app/dashboard/config/page.tsx` — Configuración conectada a DB
+- `lib/generateInvoicePDF.ts` — PDF mejorado
+- `migraciones.sql` — Script SQL para actualizar la base de datos
+
+## 🚀 Cómo instalar
+
+1. Reemplaza los archivos en tu proyecto con los de esta carpeta
+2. Ejecuta `migraciones.sql` en tu base de datos PostgreSQL
+3. Corre `npm run dev` y prueba todo
