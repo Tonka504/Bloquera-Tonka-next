@@ -20,7 +20,16 @@ import Link from 'next/link';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
-  const [resumen, setResumen] = useState({
+  const [resumen, setResumen] = useState<{
+    ventas: number;
+    gastos: number;
+    balance: number;
+    por_cobrar: number;
+    pedidosRecientes: any[];
+    ventasPorMes: any[];
+    stockBajo: any[];
+    facturasPendientes: any[];
+  }>({
     ventas: 0,
     gastos: 0,
     balance: 0,
@@ -49,7 +58,7 @@ export default function Dashboard() {
     if (result.success && result.data) {
       setResumen(result.data);
     } else {
-      console.error(result.message);
+      console.error('Error al cargar dashboard:', (result as any).message || 'Error desconocido');
     }
     setLoading(false);
   };
