@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Download, Search, Filter, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFacturas, getFacturasFiltradas, actualizarEstadoFactura } from '../../actions';
-import { generateInvoicePDF } from '@/lib/generateInvoicePDF';
+import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
 
 export default function FacturasPage() {
   const [facturas, setFacturas] = useState<any[]>([]);
