@@ -44,8 +44,10 @@ export default function Dashboard() {
   }, [router]);
 
   const cargarDatos = async () => {
-    const result = await getDashboardResumen() as any;
-    setResumen(result.data || {});
+    const result: any = await getDashboardResumen();
+    if (result.data) {
+      setResumen(result.data);
+    }
     setLoading(false);
   };
 
