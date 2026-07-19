@@ -45,10 +45,7 @@ export default function Dashboard() {
 
   const cargarDatos = async () => {
     const result = await getDashboardResumen() as any;
-
-    if (result.success && result.data) {
-    setResumen(result.data);
-}
+    setResumen(result.data || {});
     setLoading(false);
   };
 
