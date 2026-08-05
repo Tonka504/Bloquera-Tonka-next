@@ -93,7 +93,7 @@ export type ReporteGeneral = {
 export async function loginAction(
   username: string,
   password: string
-): Promise<{ success: true; user: { id: number; nombre: string; rol: string } } | { success: false; message: string }> {
+): Promise<{ success: boolean; user?: { id: number; nombre: string; rol: string }; message?: string }> {
   try {
     const users = await sql`
       SELECT id, nombre, rol
