@@ -3,15 +3,103 @@
 import { sql } from '../lib/db';
 
 // ============================================================
+// TIPO UNIFICADO - Funciona sin narrowing complejo
+// ============================================================
+export type ServerResult<T = never> = {
+  success: boolean;
+  data?: T;
+  message?: string;
+};
+
+export type InventarioData = Record<string, number>;
+
+export type Pedido = {
+  id: number;
+  fecha: string;
+  cliente: string;
+  producto: string;
+  cantidad: number;
+  precio_unitario: number;
+  estado: string;
+  estado_pago: string;
+  anticipo: number;
+};
+
+export type Factura = {
+  num_factura: number;
+  fecha_despacho: string;
+  cliente: string;
+  producto: string;
+  cantidad: number;
+  total_venta: number;
+  estado: string;
+  anticipo: number;
+  saldo_pendiente: number;
+  identidad: string;
+  rtn: string;
+  direccion: string;
+};
+
+export type Gasto = {
+  id: number;
+  fecha: string;
+  descripcion: string;
+  categoria: string;
+  monto: number;
+};
+
+export type HistorialItem = {
+  id: number;
+  tipo: string;
+  cantidad: number;
+  accion: string;
+  fecha: string;
+};
+
+export type Configuracion = {
+  bloques_por_bolsa: number;
+  arena_por_100_bloques: number;
+  precio_bloque_4: number;
+  precio_bloque_5: number;
+  precio_bloque_6: number;
+};
+
+export type DashboardResumen = {
+  ventas: number;
+  gastos: number;
+  balance: number;
+  por_cobrar: number;
+  pedidosRecientes: Pedido[];
+  ventasPorMes: { mes: string; total: number }[];
+  stockBajo: { tipo: string; cantidad: number }[];
+  facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[];
+};
+
+export type ReporteGeneral = {
+  totalVentas: number;
+  totalGastos: number;
+  ganancia: number;
+  totalBloquesStock: number;
+  totalFacturas: number;
+  totalPedidosPendientes: number;
+  ventasPorMes: { mes: string; total: number }[];
+  gastosPorCategoria: { categoria: string; total: number }[];
+  topClientes: { cliente: string; total: number }[];
+};
+
+// ============================================================
 // LOGIN
 // ============================================================
-export async function loginAction(username: string, password: string) {
+export async function loginAction(
+  username: string,
+  password: string
+): Promise<{ success: true; user: { id: number; nombre: string; rol: string } } | { success: false; message: string }> {
   try {
     const users = await sql`
-      SELECT id, nombre, rol 
-      FROM usuarios 
-      WHERE username = ${username} 
-        AND password = ${password} 
+      SELECT id, nombre, rol
+      FROM usuarios
+      WHERE username = ${username}
+        AND password = ${password}
         AND activo = 1
       LIMIT 1
     `;
@@ -20,7 +108,7 @@ export async function loginAction(username: string, password: string) {
       return { success: false, message: 'Usuario o contraseña incorrectos' };
     }
 
-    const user = users[0];
+    const user = users[0] as { id: number; nombre: string; rol: string };
     return { success: true, user };
   } catch (error) {
     console.error(error);
@@ -29,70 +117,70 @@ export async function loginAction(username: string, password: string) {
 }
 
 // ============================================================
-// DASHBOARD - RESUMEN ENRIQUECIDO (SUPER DEFENSIVO)
+// DASHBOARD
 // ============================================================
-export async function getDashboardResumen() {
+export async function getDashboardResumen(): Promise<ServerResult<DashboardResumen>> {
   let totalVentas = 0;
   let totalGastos = 0;
   let totalPorCobrar = 0;
-  let pedidosRecientes: any[] = [];
-  let ventasPorMes: any[] = [];
-  let stockBajo: any[] = [];
-  let facturasPendientes: any[] = [];
+  let pedidosRecientes: Pedido[] = [];
+  let ventasPorMes: { mes: string; total: number }[] = [];
+  let stockBajo: { tipo: string; cantidad: number }[] = [];
+  let facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[] = [];
 
   try {
     const ventasResult = await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
-    totalVentas = Number(ventasResult[0]?.total || 0);
+    totalVentas = Number((ventasResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error ventas:', e);
   }
 
   try {
     const gastosResult = await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
-    totalGastos = Number(gastosResult[0]?.total || 0);
+    totalGastos = Number((gastosResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error gastos:', e);
   }
 
   try {
     const cobrarResult = await sql`SELECT COALESCE(SUM(saldo_pendiente), 0) as total FROM historial_facturas`;
-    totalPorCobrar = Number(cobrarResult[0]?.total || 0);
+    totalPorCobrar = Number((cobrarResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error por cobrar:', e);
   }
 
   try {
     pedidosRecientes = await sql`
-      SELECT id, cliente, producto, cantidad, estado, fecha 
-      FROM pedidos 
-      ORDER BY id DESC 
+      SELECT id, fecha, cliente, producto, cantidad, precio_unitario, estado, estado_pago, anticipo
+      FROM pedidos
+      ORDER BY id DESC
       LIMIT 5
-    `;
+    ` as unknown as Pedido[];
   } catch (e) {
     console.log('Error pedidos recientes:', e);
   }
 
   try {
     ventasPorMes = await sql`
-      SELECT 
+      SELECT
         TO_CHAR(DATE_TRUNC('month', fecha_despacho::date), 'YYYY-MM-DD') as mes,
         COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE fecha_despacho >= (CURRENT_DATE - INTERVAL '5 months')
       GROUP BY DATE_TRUNC('month', fecha_despacho::date)
       ORDER BY mes ASC
-    `;
+    ` as unknown as { mes: string; total: number }[];
   } catch (e) {
     console.log('Error ventas por mes:', e);
   }
 
   try {
     stockBajo = await sql`
-      SELECT tipo, cantidad 
-      FROM inventario 
+      SELECT tipo, cantidad
+      FROM inventario
       WHERE tipo LIKE 'bloque_de_%' AND cantidad < 100
       ORDER BY cantidad ASC
-    `;
+    ` as unknown as { tipo: string; cantidad: number }[];
   } catch (e) {
     console.log('Error stock bajo:', e);
   }
@@ -104,7 +192,7 @@ export async function getDashboardResumen() {
       WHERE saldo_pendiente > 0
       ORDER BY fecha_despacho DESC
       LIMIT 5
-    `;
+    ` as unknown as { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[];
   } catch (e) {
     console.log('Error facturas pendientes:', e);
   }
@@ -120,17 +208,17 @@ export async function getDashboardResumen() {
       ventasPorMes: ventasPorMes || [],
       stockBajo: stockBajo || [],
       facturasPendientes: facturasPendientes || [],
-    }
+    },
   };
 }
 
 // ============================================================
 // PEDIDOS
 // ============================================================
-export async function getPedidos() {
+export async function getPedidos(): Promise<ServerResult<Pedido[]>> {
   try {
     const data = await sql`SELECT * FROM pedidos ORDER BY id DESC`;
-    return { success: true, data };
+    return { success: true, data: data as unknown as Pedido[] };
   } catch (error) {
     console.error(error);
     return { success: false, message: 'Error al cargar pedidos' };
@@ -146,11 +234,11 @@ export async function crearPedidoAction(pedido: {
   estado: string;
   estado_pago: string;
   anticipo: number;
-}) {
+}): Promise<ServerResult> {
   try {
     await sql`
       INSERT INTO pedidos (fecha, cliente, producto, cantidad, precio_unitario, estado, estado_pago, anticipo)
-      VALUES (${pedido.fecha}, ${pedido.cliente}, ${pedido.producto}, 
+      VALUES (${pedido.fecha}, ${pedido.cliente}, ${pedido.producto},
               ${pedido.cantidad}, ${pedido.precio_unitario}, ${pedido.estado}, ${pedido.estado_pago}, ${pedido.anticipo})
     `;
     return { success: true };
@@ -160,7 +248,7 @@ export async function crearPedidoAction(pedido: {
   }
 }
 
-export async function eliminarPedidoAction(id: number) {
+export async function eliminarPedidoAction(id: number): Promise<ServerResult> {
   try {
     await sql`DELETE FROM pedidos WHERE id = ${id}`;
     return { success: true };
@@ -170,31 +258,33 @@ export async function eliminarPedidoAction(id: number) {
   }
 }
 
-export async function despacharPedidoAction(id: number, datosFactura?: {
-  fecha_despacho?: string;
-  identidad?: string;
-  rtn?: string;
-  direccion?: string;
-  estado_pago?: string;
-}) {
+export async function despacharPedidoAction(
+  id: number,
+  datosFactura?: {
+    fecha_despacho?: string;
+    identidad?: string;
+    rtn?: string;
+    direccion?: string;
+    estado_pago?: string;
+  }
+): Promise<ServerResult> {
   try {
     const pedidos = await sql`SELECT * FROM pedidos WHERE id = ${id} LIMIT 1`;
     if (pedidos.length === 0) {
       return { success: false, message: 'Pedido no encontrado' };
     }
 
-    const pedido = pedidos[0];
+    const pedido = pedidos[0] as any;
     const total = Number(pedido.cantidad) * Number(pedido.precio_unitario);
     const anticipo = Number(pedido.anticipo) || 0;
 
-    // Al despachar, el pedido se considera PAGADO (se entregó el producto)
     const estadoPago = 'Pagado';
     const saldoPendiente = 0;
 
     await sql`
-      INSERT INTO historial_facturas 
-      (fecha_despacho, cliente, producto, cantidad, total_venta, estado, anticipo, saldo_pendiente, 
-       identidad, rtn, direccion)
+      INSERT INTO historial_facturas
+        (fecha_despacho, cliente, producto, cantidad, total_venta, estado, anticipo, saldo_pendiente,
+         identidad, rtn, direccion)
       VALUES (
         ${datosFactura?.fecha_despacho || new Date().toISOString().split('T')[0]},
         ${pedido.cliente},
@@ -214,27 +304,27 @@ export async function despacharPedidoAction(id: number, datosFactura?: {
 
     if (producto.includes('4')) {
       await sql`
-        UPDATE inventario 
-        SET cantidad = GREATEST(cantidad - ${pedido.cantidad}, 0) 
+        UPDATE inventario
+        SET cantidad = GREATEST(cantidad - ${pedido.cantidad}, 0)
         WHERE tipo = 'bloque_de_4"'
       `;
     } else if (producto.includes('5')) {
       await sql`
-        UPDATE inventario 
-        SET cantidad = GREATEST(cantidad - ${pedido.cantidad}, 0) 
+        UPDATE inventario
+        SET cantidad = GREATEST(cantidad - ${pedido.cantidad}, 0)
         WHERE tipo = 'bloque_de_5"'
       `;
     } else if (producto.includes('6')) {
       await sql`
-        UPDATE inventario 
-        SET cantidad = GREATEST(cantidad - ${pedido.cantidad}, 0) 
+        UPDATE inventario
+        SET cantidad = GREATEST(cantidad - ${pedido.cantidad}, 0)
         WHERE tipo = 'bloque_de_6"'
       `;
     }
 
     await sql`DELETE FROM pedidos WHERE id = ${id}`;
 
-    return { success: true, message: 'Pedido despachado correctamente' };
+    return { success: true };
   } catch (error) {
     console.error('Error en despacharPedidoAction:', error);
     return { success: false, message: 'Error al despachar el pedido' };
@@ -244,10 +334,10 @@ export async function despacharPedidoAction(id: number, datosFactura?: {
 // ============================================================
 // GASTOS
 // ============================================================
-export async function getGastos() {
+export async function getGastos(): Promise<ServerResult<Gasto[]>> {
   try {
     const data = await sql`SELECT * FROM gastos ORDER BY id DESC`;
-    return { success: true, data };
+    return { success: true, data: data as unknown as Gasto[] };
   } catch (error) {
     console.error(error);
     return { success: false, message: 'Error al cargar gastos' };
@@ -259,7 +349,7 @@ export async function crearGastoAction(gasto: {
   descripcion: string;
   categoria: string;
   monto: number;
-}) {
+}): Promise<ServerResult> {
   try {
     await sql`
       INSERT INTO gastos (fecha, descripcion, categoria, monto)
@@ -272,7 +362,7 @@ export async function crearGastoAction(gasto: {
   }
 }
 
-export async function eliminarGastoAction(id: number) {
+export async function eliminarGastoAction(id: number): Promise<ServerResult> {
   try {
     await sql`DELETE FROM gastos WHERE id = ${id}`;
     return { success: true };
@@ -285,11 +375,11 @@ export async function eliminarGastoAction(id: number) {
 // ============================================================
 // INVENTARIO
 // ============================================================
-export async function getInventario() {
+export async function getInventario(): Promise<ServerResult<InventarioData>> {
   try {
     const data = await sql`SELECT tipo, cantidad FROM inventario`;
     const inventario: Record<string, number> = {};
-    data.forEach((row: any) => {
+    (data as any[]).forEach((row: any) => {
       inventario[row.tipo] = Number(row.cantidad);
     });
     return { success: true, data: inventario };
@@ -299,26 +389,29 @@ export async function getInventario() {
   }
 }
 
-export async function getHistorialInventario() {
+export async function getHistorialInventario(): Promise<ServerResult<HistorialItem[]>> {
   try {
     const data = await sql`
-      SELECT * FROM historial_inventario 
-      ORDER BY fecha DESC, id DESC 
+      SELECT * FROM historial_inventario
+      ORDER BY fecha DESC, id DESC
       LIMIT 50
     `;
-    return { success: true, data };
+    return { success: true, data: data as unknown as HistorialItem[] };
   } catch (error) {
     console.error(error);
     return { success: false, message: 'Error al cargar historial' };
   }
 }
 
-export async function abastecerInventarioAction(cemento: number, arena: number) {
+export async function abastecerInventarioAction(
+  cemento: number,
+  arena: number
+): Promise<ServerResult> {
   try {
     if (cemento > 0) {
       await sql`
-        UPDATE inventario 
-        SET cantidad = cantidad + ${cemento} 
+        UPDATE inventario
+        SET cantidad = cantidad + ${cemento}
         WHERE tipo = 'cemento_bolsas'
       `;
       await sql`
@@ -328,8 +421,8 @@ export async function abastecerInventarioAction(cemento: number, arena: number) 
     }
     if (arena > 0) {
       await sql`
-        UPDATE inventario 
-        SET cantidad = cantidad + ${arena} 
+        UPDATE inventario
+        SET cantidad = cantidad + ${arena}
         WHERE tipo = 'arena_m3'
       `;
       await sql`
@@ -344,66 +437,74 @@ export async function abastecerInventarioAction(cemento: number, arena: number) 
   }
 }
 
-export async function producirBloquesAction(producto: string, cantidad: number) {
+// ============================================================
+// PRODUCCION MANUAL
+// ============================================================
+export async function producirBloquesAction(params: {
+  producto: string;
+  cantidad: number;
+  cemento_gastado: number;
+  arena_gastada: number;
+}): Promise<ServerResult> {
   try {
-    const config = await sql`SELECT * FROM configuracion LIMIT 1`;
-    if (config.length === 0) {
-      return { success: false, message: 'No hay configuración de producción' };
+    const { producto, cantidad, cemento_gastado, arena_gastada } = params;
+
+    if (cantidad <= 0) {
+      return { success: false, message: 'La cantidad de bloques debe ser mayor a 0' };
     }
-
-    const bloquesPorBolsa = Number(config[0].bloques_por_bolsa) || 36;
-    const arenaPor100 = Number(config[0].arena_por_100_bloques) || 0.40;
-
-    const cementoNecesario = cantidad / bloquesPorBolsa;
-    const arenaNecesaria = (cantidad / 100) * arenaPor100;
+    if (cemento_gastado <= 0) {
+      return { success: false, message: 'La cantidad de cemento gastado debe ser mayor a 0' };
+    }
+    if (arena_gastada <= 0) {
+      return { success: false, message: 'La cantidad de arena gastada debe ser mayor a 0' };
+    }
 
     const inventario = await sql`SELECT tipo, cantidad FROM inventario`;
     const stock: Record<string, number> = {};
-    inventario.forEach((row: any) => {
+    (inventario as any[]).forEach((row: any) => {
       stock[row.tipo] = Number(row.cantidad);
     });
 
     const cementoActual = stock['cemento_bolsas'] || 0;
     const arenaActual = stock['arena_m3'] || 0;
 
-    if (cementoActual < cementoNecesario) {
-      return { 
-        success: false, 
-        message: `No hay suficiente cemento. Necesitas ${Math.ceil(cementoNecesario)} bolsas y tienes ${cementoActual}` 
+    if (cementoActual < cemento_gastado) {
+      return {
+        success: false,
+        message: `No hay suficiente cemento. Necesitas ${cemento_gastado} bolsas y tienes ${cementoActual}`,
       };
     }
 
-    if (arenaActual < arenaNecesaria) {
-      return { 
-        success: false, 
-        message: `No hay suficiente arena. Necesitas ${arenaNecesaria.toFixed(2)} m³ y tienes ${arenaActual}` 
+    if (arenaActual < arena_gastada) {
+      return {
+        success: false,
+        message: `No hay suficiente arena. Necesitas ${arena_gastada.toFixed(2)} m³ y tienes ${arenaActual.toFixed(2)}`,
       };
     }
 
-    const cementoBolsas = Math.ceil(cementoNecesario);
     await sql`
-      UPDATE inventario 
-      SET cantidad = cantidad - ${cementoBolsas} 
+      UPDATE inventario
+      SET cantidad = cantidad - ${cemento_gastado}
       WHERE tipo = 'cemento_bolsas'
     `;
     await sql`
       INSERT INTO historial_inventario (tipo, cantidad, accion, fecha)
-      VALUES ('cemento_bolsas', ${cementoBolsas}, 'produccion_uso', NOW())
+      VALUES ('cemento_bolsas', ${cemento_gastado}, 'produccion_uso', NOW())
     `;
 
     await sql`
-      UPDATE inventario 
-      SET cantidad = cantidad - ${arenaNecesaria} 
+      UPDATE inventario
+      SET cantidad = cantidad - ${arena_gastada}
       WHERE tipo = 'arena_m3'
     `;
     await sql`
       INSERT INTO historial_inventario (tipo, cantidad, accion, fecha)
-      VALUES ('arena_m3', ${arenaNecesaria}, 'produccion_uso', NOW())
+      VALUES ('arena_m3', ${arena_gastada}, 'produccion_uso', NOW())
     `;
 
     await sql`
-      UPDATE inventario 
-      SET cantidad = cantidad + ${cantidad} 
+      UPDATE inventario
+      SET cantidad = cantidad + ${cantidad}
       WHERE tipo = ${producto}
     `;
     await sql`
@@ -411,9 +512,9 @@ export async function producirBloquesAction(producto: string, cantidad: number) 
       VALUES (${producto}, ${cantidad}, 'produccion', NOW())
     `;
 
-    return { 
+    return {
       success: true,
-      message: `Producción exitosa. Se usaron ${Math.ceil(cementoNecesario)} bolsas de cemento y ${arenaNecesaria.toFixed(2)} m³ de arena.`
+      message: `Producción exitosa. Se produjeron ${cantidad} bloques, usando ${cemento_gastado} bolsas de cemento y ${arena_gastada.toFixed(2)} m³ de arena.`,
     };
   } catch (error) {
     console.error('Error en producirBloquesAction:', error);
@@ -424,26 +525,17 @@ export async function producirBloquesAction(producto: string, cantidad: number) 
 // ============================================================
 // FACTURAS
 // ============================================================
-export async function getFacturas() {
+export async function getFacturas(): Promise<ServerResult<Factura[]>> {
   try {
     const data = await sql`
-      SELECT 
-        num_factura,
-        fecha_despacho,
-        cliente,
-        producto,
-        cantidad,
-        total_venta,
-        estado,
-        anticipo,
-        saldo_pendiente,
-        identidad,
-        rtn,
-        direccion
-      FROM historial_facturas 
+      SELECT
+        num_factura, fecha_despacho, cliente, producto, cantidad,
+        total_venta, estado, anticipo, saldo_pendiente,
+        identidad, rtn, direccion
+      FROM historial_facturas
       ORDER BY num_factura DESC
     `;
-    return { success: true, data };
+    return { success: true, data: data as unknown as Factura[] };
   } catch (error) {
     console.error('Error en getFacturas:', error);
     return { success: false, message: 'Error al cargar facturas' };
@@ -455,23 +547,14 @@ export async function getFacturasFiltradas(filtros: {
   fechaDesde?: string;
   fechaHasta?: string;
   estado?: string;
-}) {
+}): Promise<ServerResult<Factura[]>> {
   try {
     let query = sql`
-      SELECT 
-        num_factura,
-        fecha_despacho,
-        cliente,
-        producto,
-        cantidad,
-        total_venta,
-        estado,
-        anticipo,
-        saldo_pendiente,
-        identidad,
-        rtn,
-        direccion
-      FROM historial_facturas 
+      SELECT
+        num_factura, fecha_despacho, cliente, producto, cantidad,
+        total_venta, estado, anticipo, saldo_pendiente,
+        identidad, rtn, direccion
+      FROM historial_facturas
       WHERE 1=1
     `;
 
@@ -491,17 +574,20 @@ export async function getFacturasFiltradas(filtros: {
     query = sql`${query} ORDER BY num_factura DESC`;
 
     const data = await query;
-    return { success: true, data };
+    return { success: true, data: data as unknown as Factura[] };
   } catch (error) {
     console.error('Error en getFacturasFiltradas:', error);
     return { success: false, message: 'Error al filtrar facturas' };
   }
 }
 
-export async function actualizarEstadoFactura(numFactura: number, nuevoEstado: string) {
+export async function actualizarEstadoFactura(
+  numFactura: number,
+  nuevoEstado: string
+): Promise<ServerResult> {
   try {
     await sql`
-      UPDATE historial_facturas 
+      UPDATE historial_facturas
       SET estado = ${nuevoEstado}
       WHERE num_factura = ${numFactura}
     `;
@@ -513,59 +599,71 @@ export async function actualizarEstadoFactura(numFactura: number, nuevoEstado: s
 }
 
 // ============================================================
-// REPORTES (SUPER DEFENSIVO)
+// REPORTES
 // ============================================================
-export async function getReporteGeneral() {
+export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>> {
   let totalVentas = 0;
   let totalGastos = 0;
   let totalBloquesStock = 0;
   let totalFacturas = 0;
   let totalPedidosPendientes = 0;
-  let ventasPorMes: any[] = [];
-  let gastosPorCategoria: any[] = [];
-  let topClientes: any[] = [];
+  let ventasPorMes: { mes: string; total: number }[] = [];
+  let gastosPorCategoria: { categoria: string; total: number }[] = [];
+  let topClientes: { cliente: string; total: number }[] = [];
 
   try {
     const ventas = await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
-    totalVentas = Number(ventas[0]?.total || 0);
-  } catch (e) { console.log('Error ventas reporte:', e); }
+    totalVentas = Number((ventas[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error ventas reporte:', e);
+  }
 
   try {
     const gastos = await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
-    totalGastos = Number(gastos[0]?.total || 0);
-  } catch (e) { console.log('Error gastos reporte:', e); }
+    totalGastos = Number((gastos[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error gastos reporte:', e);
+  }
 
   try {
     const bloques = await sql`
-      SELECT SUM(cantidad) as total 
-      FROM inventario 
+      SELECT SUM(cantidad) as total
+      FROM inventario
       WHERE tipo LIKE 'bloque_de_%'
     `;
-    totalBloquesStock = Number(bloques[0]?.total || 0);
-  } catch (e) { console.log('Error bloques reporte:', e); }
+    totalBloquesStock = Number((bloques[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error bloques reporte:', e);
+  }
 
   try {
     const facturas = await sql`SELECT COUNT(*) as total FROM historial_facturas`;
-    totalFacturas = Number(facturas[0]?.total || 0);
-  } catch (e) { console.log('Error facturas reporte:', e); }
+    totalFacturas = Number((facturas[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error facturas reporte:', e);
+  }
 
   try {
     const pedidosPendientes = await sql`SELECT COUNT(*) as total FROM pedidos WHERE estado = 'Pendiente'`;
-    totalPedidosPendientes = Number(pedidosPendientes[0]?.total || 0);
-  } catch (e) { console.log('Error pedidos reporte:', e); }
+    totalPedidosPendientes = Number((pedidosPendientes[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error pedidos reporte:', e);
+  }
 
   try {
     const fechaDesde = '2026-02-19';
     ventasPorMes = await sql`
-      SELECT 
+      SELECT
         SUBSTRING(fecha_despacho::text, 1, 7) as mes,
         COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE fecha_despacho >= ${fechaDesde}
       GROUP BY SUBSTRING(fecha_despacho::text, 1, 7)
       ORDER BY mes ASC
-    `;
-  } catch (e) { console.log('Error ventas por mes reporte:', e); }
+    ` as unknown as { mes: string; total: number }[];
+  } catch (e) {
+    console.log('Error ventas por mes reporte:', e);
+  }
 
   try {
     gastosPorCategoria = await sql`
@@ -573,8 +671,10 @@ export async function getReporteGeneral() {
       FROM gastos
       GROUP BY categoria
       ORDER BY total DESC
-    `;
-  } catch (e) { console.log('Error gastos categoria reporte:', e); }
+    ` as unknown as { categoria: string; total: number }[];
+  } catch (e) {
+    console.log('Error gastos categoria reporte:', e);
+  }
 
   try {
     topClientes = await sql`
@@ -583,8 +683,10 @@ export async function getReporteGeneral() {
       GROUP BY cliente
       ORDER BY total DESC
       LIMIT 5
-    `;
-  } catch (e) { console.log('Error top clientes reporte:', e); }
+    ` as unknown as { cliente: string; total: number }[];
+  } catch (e) {
+    console.log('Error top clientes reporte:', e);
+  }
 
   return {
     success: true,
@@ -598,20 +700,20 @@ export async function getReporteGeneral() {
       ventasPorMes: ventasPorMes || [],
       gastosPorCategoria: gastosPorCategoria || [],
       topClientes: topClientes || [],
-    }
+    },
   };
 }
 
 // ============================================================
-// CONFIGURACIÓN
+// CONFIGURACION
 // ============================================================
-export async function getConfiguracion() {
+export async function getConfiguracion(): Promise<ServerResult<Configuracion>> {
   try {
     const data = await sql`SELECT * FROM configuracion LIMIT 1`;
     if (data.length === 0) {
       return { success: false, message: 'No hay configuración' };
     }
-    return { success: true, data: data[0] };
+    return { success: true, data: data[0] as unknown as Configuracion };
   } catch (error) {
     console.error(error);
     return { success: false, message: 'Error al cargar configuración' };
@@ -624,11 +726,11 @@ export async function guardarConfiguracion(config: {
   precio_bloque_4: number;
   precio_bloque_5: number;
   precio_bloque_6: number;
-}) {
+}): Promise<ServerResult> {
   try {
     await sql`
-      UPDATE configuracion 
-      SET 
+      UPDATE configuracion
+      SET
         bloques_por_bolsa = ${config.bloques_por_bolsa},
         arena_por_100_bloques = ${config.arena_por_100_bloques},
         precio_bloque_4 = ${config.precio_bloque_4},
