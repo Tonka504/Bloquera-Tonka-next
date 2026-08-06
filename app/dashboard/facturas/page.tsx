@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Search, Filter, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Download, Search, Filter, X, ChevronLeft, ChevronRight, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFacturas, getFacturasFiltradas, actualizarEstadoFactura } from '../../actions';
 import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
@@ -66,7 +66,7 @@ export default function FacturasPage() {
       // Filtro solo por cliente (local)
       const filtro = busqueda.toLowerCase();
       setFacturasFiltradas(
-        facturas.filter(f => 
+        facturas.filter(f =>
           f.cliente?.toLowerCase().includes(filtro) ||
           String(f.num_factura).includes(filtro) ||
           f.producto?.toLowerCase().includes(filtro)
@@ -119,10 +119,10 @@ export default function FacturasPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Facturas</h1>
-          <p className="text-slate-500">Historial de facturas generadas</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Facturas</h1>
+          <p className="text-slate-500 mt-1">Historial de facturas generadas</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-100 px-4 py-2 rounded-full">
           <FileText size={16} />
           {facturas.length} facturas totales
         </div>
@@ -131,20 +131,20 @@ export default function FacturasPage() {
       {/* Barra de búsqueda y filtros */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
             placeholder="Buscar por cliente, producto o número..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && aplicarFiltros()}
-            className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 text-sm"
+            className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary text-sm transition"
           />
         </div>
         <button
           onClick={() => setMostrarFiltros(!mostrarFiltros)}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-medium text-sm transition ${
-            mostrarFiltros ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-medium text-sm transition-colors ${
+            mostrarFiltros ? 'bg-brand-primary text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
           <Filter size={18} />
@@ -152,7 +152,7 @@ export default function FacturasPage() {
         </button>
         <button
           onClick={aplicarFiltros}
-          className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-medium text-sm transition"
+          className="px-5 py-3 bg-brand-primary hover:bg-brand-primary-dark text-white rounded-2xl font-medium text-sm transition-colors shadow-sm shadow-brand-primary/25"
         >
           Buscar
         </button>
@@ -167,7 +167,7 @@ export default function FacturasPage() {
               <select
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 bg-white"
+                className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary bg-white"
               >
                 <option value="">Todos</option>
                 <option value="Pagado">Pagado</option>
@@ -181,7 +181,7 @@ export default function FacturasPage() {
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
               />
             </div>
             <div>
@@ -190,14 +190,14 @@ export default function FacturasPage() {
                 type="date"
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
               />
             </div>
           </div>
           <div className="flex justify-end mt-4">
             <button
               onClick={limpiarFiltros}
-              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition"
+              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
             >
               <X size={14} />
               Limpiar filtros
@@ -207,36 +207,44 @@ export default function FacturasPage() {
       )}
 
       {/* Tabla */}
-      <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-100">
+            <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">N° Factura</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Producto</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Saldo</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">N° Factura</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Producto</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Saldo</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-slate-400">Cargando facturas...</td></tr>
+                <tr>
+                  <td colSpan={9} className="text-center py-16">
+                    <div className="flex items-center justify-center gap-2 text-slate-400">
+                      <Loader2 className="animate-spin" size={18} /> Cargando facturas...
+                    </div>
+                  </td>
+                </tr>
               ) : facturasPagina.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">
-                    <FileText size={48} className="mx-auto mb-3 text-slate-300" />
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
+                    <FileText size={40} className="mx-auto mb-3 text-slate-300" />
                     No hay facturas registradas
                   </td>
                 </tr>
               ) : (
                 facturasPagina.map((f: any) => (
-                  <tr key={f.num_factura} className="border-t hover:bg-slate-50 transition">
+                  <tr key={f.num_factura} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900">#{f.num_factura}</td>
-                    <td className="px-6 py-4 text-slate-600 text-sm">{f.fecha_despacho}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">
+                      {f.fecha_despacho ? new Date(f.fecha_despacho).toLocaleDateString('es-HN') : ''}
+                    </td>
                     <td className="px-6 py-4 text-slate-700">
                       <div>
                         <p className="font-medium">{f.cliente}</p>
@@ -266,9 +274,9 @@ export default function FacturasPage() {
                       </select>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button 
+                      <button
                         onClick={() => descargarPDF(f)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition"
+                        className="p-2 text-brand-primary hover:bg-blue-50 rounded-xl transition-colors"
                         title="Descargar PDF"
                       >
                         <Download size={18} />
@@ -283,7 +291,7 @@ export default function FacturasPage() {
 
         {/* Paginación */}
         {totalPaginas > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t">
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200">
             <p className="text-sm text-slate-500">
               Mostrando {inicio + 1} - {Math.min(inicio + itemsPorPagina, facturasFiltradas.length)} de {facturasFiltradas.length}
             </p>
@@ -291,7 +299,7 @@ export default function FacturasPage() {
               <button
                 onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
                 disabled={paginaActual === 1}
-                className="p-2 rounded-xl border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="p-2 rounded-xl border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -301,7 +309,7 @@ export default function FacturasPage() {
               <button
                 onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
                 disabled={paginaActual === totalPaginas}
-                className="p-2 rounded-xl border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="p-2 rounded-xl border border-slate-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight size={18} />
               </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Truck, Trash2, Search, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Truck, Trash2, Search, X, CheckCircle, Loader2, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPedidos, crearPedidoAction, eliminarPedidoAction, despacharPedidoAction } from '../../actions';
 
@@ -39,7 +39,7 @@ export default function PedidosPage() {
     }
     const filtro = busqueda.toLowerCase();
     setPedidosFiltrados(
-      pedidos.filter(p => 
+      pedidos.filter(p =>
         p.cliente?.toLowerCase().includes(filtro) ||
         p.producto?.toLowerCase().includes(filtro) ||
         String(p.id).includes(filtro)
@@ -165,12 +165,12 @@ export default function PedidosPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Pedidos</h1>
-          <p className="text-slate-500">Gestión de pedidos y despachos</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Pedidos</h1>
+          <p className="text-slate-500 mt-1">Gestión de pedidos y despachos</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)} 
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-medium transition"
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-brand-primary hover:bg-brand-primary-dark text-white px-6 py-3 rounded-2xl font-medium transition shadow-sm shadow-brand-primary/25"
         >
           <Plus size={20} /> Nuevo Pedido
         </button>
@@ -178,45 +178,52 @@ export default function PedidosPage() {
 
       {/* Búsqueda */}
       <div className="relative mb-6">
-        <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         <input
           type="text"
           placeholder="Buscar por cliente, producto o ID..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary text-sm transition"
         />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-100">
+            <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Producto</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Cantidad</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Precio</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Pago</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Producto</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Cantidad</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Precio</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Pago</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-slate-400">Cargando...</td></tr>
+                <tr>
+                  <td colSpan={9} className="text-center py-16">
+                    <div className="flex items-center justify-center gap-2 text-slate-400">
+                      <Loader2 className="animate-spin" size={18} /> Cargando pedidos...
+                    </div>
+                  </td>
+                </tr>
               ) : pedidosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-400">
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
+                    <ShoppingCart size={40} className="mx-auto mb-3 text-slate-300" />
                     {busqueda ? 'No se encontraron pedidos' : 'No hay pedidos registrados'}
                   </td>
                 </tr>
               ) : (
                 pedidosFiltrados.map((p: any) => (
-                  <tr key={p.id} className="border-t hover:bg-slate-50 transition">
+                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900">#{p.id}</td>
                     <td className="px-6 py-4 text-slate-700">{p.cliente}</td>
                     <td className="px-6 py-4 text-slate-700">{p.producto}</td>
@@ -236,17 +243,17 @@ export default function PedidosPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex justify-center gap-2">
-                        <button 
-                          onClick={() => abrirModalDespacho(p)} 
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition" 
+                      <div className="flex justify-center gap-1">
+                        <button
+                          onClick={() => abrirModalDespacho(p)}
+                          className="p-2 text-brand-primary hover:bg-blue-50 rounded-xl transition-colors"
                           title="Despachar"
                         >
                           <Truck size={18} />
                         </button>
-                        <button 
-                          onClick={() => abrirModalEliminar(p)} 
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition" 
+                        <button
+                          onClick={() => abrirModalEliminar(p)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                           title="Eliminar"
                         >
                           <Trash2 size={18} />
@@ -261,20 +268,20 @@ export default function PedidosPage() {
         </div>
 
         {/* Contador */}
-        <div className="px-6 py-3 bg-slate-50 border-t text-xs text-slate-500">
+        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
           Mostrando {pedidosFiltrados.length} de {pedidos.length} pedidos
         </div>
       </div>
 
       {/* ========== MODAL NUEVO PEDIDO ========== */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
-              <h3 className="text-2xl font-bold text-slate-900">Nuevo Pedido</h3>
-              <button 
-                onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }} 
-                className="text-slate-400 hover:text-slate-600 text-2xl leading-none transition"
+              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Nuevo Pedido</h3>
+              <button
+                onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X size={24} />
               </button>
@@ -283,19 +290,19 @@ export default function PedidosPage() {
             <form onSubmit={crearPedido} className="px-8 pb-8 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Cliente *</label>
-                <input 
-                  name="cliente" 
-                  required 
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition" 
+                <input
+                  name="cliente"
+                  required
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                   placeholder="Nombre completo del cliente"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Producto</label>
-                <select 
-                  name="producto" 
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition bg-white"
+                <select
+                  name="producto"
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition bg-white"
                 >
                   <option value='Bloque de 4"'>Bloque de 4"</option>
                   <option value='Bloque de 5"'>Bloque de 5"</option>
@@ -306,34 +313,34 @@ export default function PedidosPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Cantidad *</label>
-                  <input 
-                    name="cantidad" 
-                    type="number" 
+                  <input
+                    name="cantidad"
+                    type="number"
                     min="1"
-                    defaultValue="100" 
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition" 
+                    defaultValue="100"
+                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Precio Unitario (L.) *</label>
-                  <input 
-                    name="precio" 
-                    type="number" 
-                    step="0.01" 
+                  <input
+                    name="precio"
+                    type="number"
+                    step="0.01"
                     min="0.01"
-                    defaultValue="25" 
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition" 
+                    defaultValue="25"
+                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Estado de Pago</label>
-                <select 
-                  name="estado_pago" 
+                <select
+                  name="estado_pago"
                   value={estadoPago}
                   onChange={(e) => setEstadoPago(e.target.value)}
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition bg-white"
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition bg-white"
                 >
                   <option value="Pendiente">Pendiente</option>
                   <option value="Pagado">Pagado</option>
@@ -344,29 +351,29 @@ export default function PedidosPage() {
               {estadoPago === "Con Anticipo" && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Monto del Anticipo (L.)</label>
-                  <input 
-                    name="anticipo" 
-                    type="number" 
+                  <input
+                    name="anticipo"
+                    type="number"
                     step="0.01"
                     min="0.01"
                     defaultValue="0"
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition" 
+                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                     placeholder="Ej: 500"
                   />
                 </div>
               )}
 
               <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }} 
-                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition"
+                <button
+                  type="button"
+                  onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }}
+                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
+                <button
+                  type="submit"
+                  className="flex-1 py-3.5 rounded-2xl bg-brand-primary hover:bg-brand-primary-dark text-white font-semibold transition-colors shadow-sm shadow-brand-primary/25"
                 >
                   Guardar Pedido
                 </button>
@@ -378,16 +385,16 @@ export default function PedidosPage() {
 
       {/* ========== MODAL DESPACHO COMPLETO ========== */}
       {showDespachoModal && pedidoADespachar && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">Despachar Pedido</h3>
+                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Despachar Pedido</h3>
                 <p className="text-sm text-slate-500 mt-1">#{pedidoADespachar.id} — {pedidoADespachar.cliente}</p>
               </div>
-              <button 
-                onClick={() => { setShowDespachoModal(false); setPedidoADespachar(null); }} 
-                className="text-slate-400 hover:text-slate-600 transition"
+              <button
+                onClick={() => { setShowDespachoModal(false); setPedidoADespachar(null); }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X size={24} />
               </button>
@@ -414,8 +421,8 @@ export default function PedidosPage() {
                 </div>
                 {/* Total a Pagar */}
                 <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100 bg-blue-50">
-                  <span className="text-sm font-semibold text-blue-700">Total a Pagar</span>
-                  <span className="text-lg font-bold text-blue-700">
+                  <span className="text-sm font-semibold text-brand-primary">Total a Pagar</span>
+                  <span className="text-lg font-bold text-brand-primary">
                     L. {(pedidoADespachar.cantidad * pedidoADespachar.precio_unitario).toFixed(2)}
                   </span>
                 </div>
@@ -450,42 +457,42 @@ export default function PedidosPage() {
             <form onSubmit={confirmarDespacho} className="px-8 pb-8 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha de Despacho *</label>
-                <input 
-                  name="fecha_despacho" 
-                  type="date" 
+                <input
+                  name="fecha_despacho"
+                  type="date"
                   required
                   defaultValue={new Date().toISOString().split('T')[0]}
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition" 
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Identidad del Cliente</label>
-                <input 
-                  name="identidad" 
-                  type="text" 
+                <input
+                  name="identidad"
+                  type="text"
                   placeholder="Ej: 0801-1990-12345"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition" 
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">RTN</label>
-                <input 
-                  name="rtn" 
-                  type="text" 
+                <input
+                  name="rtn"
+                  type="text"
                   placeholder="Ej: 08011990123456"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition" 
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Dirección</label>
-                <input 
-                  name="direccion" 
-                  type="text" 
+                <input
+                  name="direccion"
+                  type="text"
                   defaultValue="SANTA BARBARA, S.B., HONDURAS"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition" 
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
                 />
               </div>
 
@@ -497,16 +504,16 @@ export default function PedidosPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => { setShowDespachoModal(false); setPedidoADespachar(null); }} 
-                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition"
+                <button
+                  type="button"
+                  onClick={() => { setShowDespachoModal(false); setPedidoADespachar(null); }}
+                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition"
+                <button
+                  type="submit"
+                  className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors shadow-sm shadow-emerald-600/25"
                 >
                   Confirmar Despacho y Pago
                 </button>
@@ -518,26 +525,26 @@ export default function PedidosPage() {
 
       {/* ========== MODAL CONFIRMAR ELIMINAR ========== */}
       {showEliminarModal && pedidoAEliminar && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl p-8 text-center">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={28} className="text-red-600" />
             </div>
             <h3 className="text-xl font-bold text-slate-900 mb-2">¿Eliminar Pedido?</h3>
             <p className="text-slate-500 mb-6">
-              Estás a punto de eliminar el pedido <span className="font-semibold text-slate-700">#{pedidoAEliminar.id}</span> de <span className="font-semibold text-slate-700">{pedidoAEliminar.cliente}</span>. 
+              Estás a punto de eliminar el pedido <span className="font-semibold text-slate-700">#{pedidoAEliminar.id}</span> de <span className="font-semibold text-slate-700">{pedidoAEliminar.cliente}</span>.
               Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
-              <button 
-                onClick={() => { setShowEliminarModal(false); setPedidoAEliminar(null); }} 
-                className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition"
+              <button
+                onClick={() => { setShowEliminarModal(false); setPedidoAEliminar(null); }}
+                className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
               >
                 Cancelar
               </button>
-              <button 
-                onClick={confirmarEliminar} 
-                className="flex-1 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold transition"
+              <button
+                onClick={confirmarEliminar}
+                className="flex-1 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors shadow-sm shadow-red-600/25"
               >
                 Sí, Eliminar
               </button>

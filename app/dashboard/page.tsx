@@ -1,115 +1,282 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { User, Lock, LogIn } from 'lucide-react';
-import { loginAction } from './actions';
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Users,
+  AlertTriangle,
+  Package,
+  FileText,
+  ShoppingCart,
+  ArrowRight,
+  Loader2,
+} from 'lucide-react';
+import { getDashboardResumen } from '../actions';
+import Link from 'next/link';
 
-export default function LoginPage() {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
-  const [loading, setLoading] = useState(false);
+const CARD = 'bg-white rounded-3xl border border-slate-200/70 shadow-sm hover:shadow-md transition-shadow';
+
+export default function Dashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [resumen, setResumen] = useState({
+    ventas: 0,
+    gastos: 0,
+    balance: 0,
+    por_cobrar: 0,
+    pedidosRecientes: [],
+    ventasPorMes: [],
+    stockBajo: [],
+    facturasPendientes: [],
+  });
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const result = await loginAction(username, password);
-
-    if (!result.success || !result.user) {
-      toast.error(result.message || 'Error al iniciar sesi&oacute;n');
-      setLoading(false);
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (!savedUser) {
+      router.push('/');
       return;
     }
+    setUser(JSON.parse(savedUser));
+    cargarDatos();
+  }, [router]);
 
-    localStorage.setItem('user', JSON.stringify(result.user));
-    toast.success(`Bienvenido, ${result.user.nombre}`);
-    router.push('/dashboard');
+  const cargarDatos = async () => {
+    const result: any = await getDashboardResumen();
+    if (result.data) {
+      setResumen(result.data);
+    }
     setLoading(false);
   };
 
+  if (!user) return null;
+
+  // Calcular máximo para el gráfico
+  const maxVentas = Math.max(...resumen.ventasPorMes.map((v: any) => Number(v.total)), 1);
+
+  // Formatear mes (acepta "2026-02" o "2026-02-01")
+  const formatMes = (mesStr: string) => {
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    // Si viene como "2026-02", agregar día para crear fecha válida
+    const fechaStr = mesStr.length === 7 ? mesStr + '-01' : mesStr;
+    const date = new Date(fechaStr);
+    return meses[date.getMonth()] || mesStr;
+  };
+
   return (
-    <div className="min-h-screen bg-[#1E2937] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 mb-4">
-            <img 
-              src="/logo-bloquera.png" 
-              alt="Bloquera Tonka" 
-              className="w-full h-full object-contain drop-shadow-lg"
-            />
-          </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Bloquera Tonka</h1>
-          <p className="text-slate-400 mt-1 text-lg">Sistema de Gesti&oacute;n Integral</p>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border border-slate-200">
-          <form onSubmit={handleLogin} className="space-y-6">
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Usuario
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-4 text-slate-400" size={20} />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E40AF] text-lg transition-all"
-                  placeholder="admin"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Contrase&ntilde;a
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-4 text-slate-400" size={20} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E40AF] text-lg transition-all"
-                  placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-70 mt-2"
-            >
-              {loading ? (
-                'Iniciando sesi&oacute;n...'
-              ) : (
-                <>
-                  <LogIn size={22} />
-                  Iniciar Sesi&oacute;n
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 pt-6 border-t text-center">
-            <p className="text-sm text-slate-500">
-              Usuario de prueba: <span className="font-semibold text-slate-700">admin</span> / <span className="font-semibold text-slate-700">admin123</span>
-            </p>
-          </div>
-        </div>
-
-        <p className="text-center text-slate-500 text-sm mt-6">
-          &copy; {new Date().getFullYear()} Bloquera Tonka - Santa B&aacute;rbara, S.B.
-        </p>
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+        <p className="text-slate-500 mt-1">Resumen general de tu bloquera</p>
       </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-24 text-slate-400">
+          <Loader2 className="animate-spin" size={20} />
+          Cargando datos...
+        </div>
+      ) : (
+        <>
+          {/* Tarjetas de Resumen */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">Ventas Totales</p>
+                  <p className="text-3xl font-bold text-emerald-600 mt-1 tracking-tight">
+                    L. {resumen.ventas.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                  <TrendingUp className="text-emerald-600" size={24} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">Gastos Totales</p>
+                  <p className="text-3xl font-bold text-red-600 mt-1 tracking-tight">
+                    L. {resumen.gastos.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center">
+                  <TrendingDown className="text-red-600" size={24} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">Balance</p>
+                  <p className={`text-3xl font-bold mt-1 tracking-tight ${resumen.balance >= 0 ? 'text-brand-primary' : 'text-red-600'}`}>
+                    L. {resumen.balance.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+                  <DollarSign className="text-brand-primary" size={24} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">Por Cobrar</p>
+                  <p className="text-3xl font-bold text-amber-600 mt-1 tracking-tight">
+                    L. {resumen.por_cobrar.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
+                  <Users className="text-amber-600" size={24} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Gráfico de Ventas */}
+            <div className={`${CARD} lg:col-span-2 p-6`}>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-semibold text-lg text-slate-900">Ventas por Mes</h3>
+                <Link href="/dashboard/reportes" className="text-sm text-brand-primary hover:underline flex items-center gap-1">
+                  Ver más <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              {resumen.ventasPorMes.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">No hay datos de ventas</div>
+              ) : (
+                <div className="flex items-end gap-3 h-48">
+                  {resumen.ventasPorMes.map((item: any, idx: number) => {
+                    const height = Math.max((Number(item.total) / maxVentas) * 100, 5);
+                    return (
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                        <div className="relative w-full flex justify-center">
+                          <div
+                            className="w-full max-w-[60px] bg-gradient-to-t from-brand-primary to-blue-500 rounded-t-xl transition-all hover:from-brand-primary-dark hover:to-blue-600"
+                            style={{ height: `${height}%`, minHeight: '8px' }}
+                            title={`L. ${Number(item.total).toLocaleString()}`}
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500 font-medium">
+                          {formatMes(item.mes)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Alertas de Stock Bajo */}
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle className="text-amber-500" size={20} />
+                <h3 className="font-semibold text-lg text-slate-900">Stock Bajo</h3>
+              </div>
+
+              {resumen.stockBajo.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  <Package size={32} className="mx-auto mb-2 text-slate-300" />
+                  Todo el stock está en niveles normales
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {resumen.stockBajo.map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-amber-50 rounded-2xl border border-amber-100">
+                      <div className="flex items-center gap-3">
+                        <Package size={16} className="text-amber-600" />
+                        <span className="text-sm font-medium text-slate-700">
+                          {item.tipo.replace('bloque_de_', 'Bloque de ').replace('"', '"')}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-amber-700">
+                        {item.cantidad} und
+                      </span>
+                    </div>
+                  ))}
+                  <Link
+                    href="/dashboard/inventario"
+                    className="block text-center text-sm text-brand-primary hover:underline mt-2"
+                  >
+                    Ir a Inventario →
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Pedidos Recientes */}
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="text-brand-primary" size={20} />
+                  <h3 className="font-semibold text-lg text-slate-900">Pedidos Recientes</h3>
+                </div>
+                <Link href="/dashboard/pedidos" className="text-sm text-brand-primary hover:underline">
+                  Ver todos
+                </Link>
+              </div>
+
+              {resumen.pedidosRecientes.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">No hay pedidos recientes</div>
+              ) : (
+                <div className="space-y-3">
+                  {resumen.pedidosRecientes.map((pedido: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                      <div>
+                        <p className="font-medium text-slate-900 text-sm">{pedido.cliente}</p>
+                        <p className="text-xs text-slate-500">{pedido.producto} — {pedido.cantidad} und</p>
+                      </div>
+                      <span className="px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-700 font-medium">
+                        {pedido.estado}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Facturas Pendientes */}
+            <div className={`${CARD} p-6`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="text-red-500" size={20} />
+                  <h3 className="font-semibold text-lg text-slate-900">Facturas Pendientes</h3>
+                </div>
+                <Link href="/dashboard/facturas" className="text-sm text-brand-primary hover:underline">
+                  Ver todas
+                </Link>
+              </div>
+
+              {resumen.facturasPendientes.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">No hay facturas pendientes</div>
+              ) : (
+                <div className="space-y-3">
+                  {resumen.facturasPendientes.map((factura: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-2xl border border-red-100">
+                      <div>
+                        <p className="font-medium text-slate-900 text-sm">{factura.cliente}</p>
+                        <p className="text-xs text-slate-500">Factura #{factura.num_factura}</p>
+                      </div>
+                      <span className="text-sm font-bold text-red-600">
+                        L. {Number(factura.saldo_pendiente).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -35,7 +35,8 @@ export function generateInvoicePDF(factura: any) {
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
 
-  const fecha = factura.fecha_despacho || factura.fecha || new Date().toLocaleDateString('es-HN');
+  const fechaRaw = factura.fecha_despacho || factura.fecha;
+  const fecha = fechaRaw ? new Date(fechaRaw).toLocaleDateString('es-HN') : new Date().toLocaleDateString('es-HN');
   const numFactura = factura.num_factura || 'N/A';
 
   doc.text(`N° Factura: ${numFactura}`, 20, 58);
