@@ -17,7 +17,7 @@ import {
 import { getDashboardResumen } from '../actions';
 import Link from 'next/link';
 
-const CARD = 'bg-white rounded-3xl border border-slate-200/70 shadow-sm hover:shadow-md transition-shadow';
+const CARD = 'bg-white border border-brand-line';
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -54,117 +54,94 @@ export default function Dashboard() {
 
   if (!user) return null;
 
-  // Calcular máximo para el gráfico
   const maxVentas = Math.max(...resumen.ventasPorMes.map((v: any) => Number(v.total)), 1);
 
-  // Formatear mes (acepta "2026-02" o "2026-02-01")
   const formatMes = (mesStr: string) => {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    // Si viene como "2026-02", agregar día para crear fecha válida
     const fechaStr = mesStr.length === 7 ? mesStr + '-01' : mesStr;
     const date = new Date(fechaStr);
     return meses[date.getMonth()] || mesStr;
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Resumen general de tu bloquera</p>
+    <div className="px-10 py-9">
+      <div className="mb-10">
+        <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
+        <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-24 text-slate-400">
+        <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
           <Loader2 className="animate-spin" size={20} />
           Cargando datos...
         </div>
       ) : (
         <>
           {/* Tarjetas de Resumen */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Ventas Totales</p>
-                  <p className="text-3xl font-bold text-emerald-600 mt-1 tracking-tight">
-                    L. {resumen.ventas.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                  <TrendingUp className="text-emerald-600" size={24} />
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border border-brand-line divide-y md:divide-y-0 md:divide-x divide-brand-line mb-10">
+            <div className="p-6">
+              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+                <TrendingUp size={14} strokeWidth={1.6} /> Ventas Totales
               </div>
+              <p className="font-display text-3xl text-[#201c17]">
+                L. {resumen.ventas.toLocaleString()}
+              </p>
             </div>
 
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Gastos Totales</p>
-                  <p className="text-3xl font-bold text-red-600 mt-1 tracking-tight">
-                    L. {resumen.gastos.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center">
-                  <TrendingDown className="text-red-600" size={24} />
-                </div>
+            <div className="p-6">
+              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+                <TrendingDown size={14} strokeWidth={1.6} /> Gastos Totales
               </div>
+              <p className="font-display text-3xl text-[#201c17]">
+                L. {resumen.gastos.toLocaleString()}
+              </p>
             </div>
 
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Balance</p>
-                  <p className={`text-3xl font-bold mt-1 tracking-tight ${resumen.balance >= 0 ? 'text-brand-primary' : 'text-red-600'}`}>
-                    L. {resumen.balance.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  <DollarSign className="text-brand-primary" size={24} />
-                </div>
+            <div className="p-6">
+              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+                <DollarSign size={14} strokeWidth={1.6} /> Balance
               </div>
+              <p className={`font-display text-3xl ${resumen.balance >= 0 ? 'text-[#201c17]' : 'text-red-800'}`}>
+                L. {resumen.balance.toLocaleString()}
+              </p>
             </div>
 
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Por Cobrar</p>
-                  <p className="text-3xl font-bold text-amber-600 mt-1 tracking-tight">
-                    L. {resumen.por_cobrar.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
-                  <Users className="text-amber-600" size={24} />
-                </div>
+            <div className="p-6">
+              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+                <Users size={14} strokeWidth={1.6} /> Por Cobrar
               </div>
+              <p className="font-display text-3xl text-brand-accent">
+                L. {resumen.por_cobrar.toLocaleString()}
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Gráfico de Ventas */}
-            <div className={`${CARD} lg:col-span-2 p-6`}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-lg text-slate-900">Ventas por Mes</h3>
-                <Link href="/dashboard/reportes" className="text-sm text-brand-primary hover:underline flex items-center gap-1">
-                  Ver más <ArrowRight size={14} />
+            <div className={`${CARD} lg:col-span-2 p-7`}>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="font-display text-lg text-[#201c17]">Ventas por Mes</h3>
+                <Link href="/dashboard/reportes" className="text-xs text-[#8a8175] hover:text-brand-accent flex items-center gap-1 transition-colors uppercase tracking-wide">
+                  Ver más <ArrowRight size={12} />
                 </Link>
               </div>
 
               {resumen.ventasPorMes.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">No hay datos de ventas</div>
+                <div className="text-center py-12 text-[#a39a8c] text-sm">No hay datos de ventas</div>
               ) : (
-                <div className="flex items-end gap-3 h-48">
+                <div className="flex items-end gap-4 h-44">
                   {resumen.ventasPorMes.map((item: any, idx: number) => {
                     const height = Math.max((Number(item.total) / maxVentas) * 100, 5);
                     return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-3">
                         <div className="relative w-full flex justify-center">
                           <div
-                            className="w-full max-w-[60px] bg-gradient-to-t from-brand-primary to-blue-500 rounded-t-xl transition-all hover:from-brand-primary-dark hover:to-blue-600"
-                            style={{ height: `${height}%`, minHeight: '8px' }}
+                            className="w-full max-w-[36px] bg-brand-ink hover:bg-brand-accent transition-colors"
+                            style={{ height: `${height}%`, minHeight: '4px' }}
                             title={`L. ${Number(item.total).toLocaleString()}`}
                           />
                         </div>
-                        <span className="text-xs text-slate-500 font-medium">
+                        <span className="text-[11px] text-[#8a8175] uppercase tracking-wide">
                           {formatMes(item.mes)}
                         </span>
                       </div>
@@ -175,35 +152,32 @@ export default function Dashboard() {
             </div>
 
             {/* Alertas de Stock Bajo */}
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="text-amber-500" size={20} />
-                <h3 className="font-semibold text-lg text-slate-900">Stock Bajo</h3>
+            <div className={`${CARD} p-7`}>
+              <div className="flex items-center gap-2 mb-5">
+                <AlertTriangle className="text-brand-accent" size={17} strokeWidth={1.6} />
+                <h3 className="font-display text-lg text-[#201c17]">Stock Bajo</h3>
               </div>
 
               {resumen.stockBajo.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                  <Package size={32} className="mx-auto mb-2 text-slate-300" />
+                <div className="text-center py-8 text-[#a39a8c] text-sm">
+                  <Package size={28} strokeWidth={1.4} className="mx-auto mb-2 text-[#d9d2c3]" />
                   Todo el stock está en niveles normales
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-0 divide-y divide-brand-line">
                   {resumen.stockBajo.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                      <div className="flex items-center gap-3">
-                        <Package size={16} className="text-amber-600" />
-                        <span className="text-sm font-medium text-slate-700">
-                          {item.tipo.replace('bloque_de_', 'Bloque de ').replace('"', '"')}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-amber-700">
+                    <div key={idx} className="flex items-center justify-between py-3">
+                      <span className="text-sm text-[#201c17]">
+                        {item.tipo.replace('bloque_de_', 'Bloque de ').replace('"', '"')}
+                      </span>
+                      <span className="text-sm font-medium text-brand-accent">
                         {item.cantidad} und
                       </span>
                     </div>
                   ))}
                   <Link
                     href="/dashboard/inventario"
-                    className="block text-center text-sm text-brand-primary hover:underline mt-2"
+                    className="block text-center text-xs text-[#8a8175] hover:text-brand-accent uppercase tracking-wide pt-4 transition-colors"
                   >
                     Ir a Inventario →
                   </Link>
@@ -214,28 +188,28 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Pedidos Recientes */}
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center justify-between mb-4">
+            <div className={`${CARD} p-7`}>
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <ShoppingCart className="text-brand-primary" size={20} />
-                  <h3 className="font-semibold text-lg text-slate-900">Pedidos Recientes</h3>
+                  <ShoppingCart className="text-[#8a8175]" size={17} strokeWidth={1.6} />
+                  <h3 className="font-display text-lg text-[#201c17]">Pedidos Recientes</h3>
                 </div>
-                <Link href="/dashboard/pedidos" className="text-sm text-brand-primary hover:underline">
+                <Link href="/dashboard/pedidos" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
                   Ver todos
                 </Link>
               </div>
 
               {resumen.pedidosRecientes.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">No hay pedidos recientes</div>
+                <div className="text-center py-8 text-[#a39a8c] text-sm">No hay pedidos recientes</div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-brand-line">
                   {resumen.pedidosRecientes.map((pedido: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                    <div key={idx} className="flex items-center justify-between py-3">
                       <div>
-                        <p className="font-medium text-slate-900 text-sm">{pedido.cliente}</p>
-                        <p className="text-xs text-slate-500">{pedido.producto} — {pedido.cantidad} und</p>
+                        <p className="text-sm text-[#201c17]">{pedido.cliente}</p>
+                        <p className="text-xs text-[#8a8175] mt-0.5">{pedido.producto} — {pedido.cantidad} und</p>
                       </div>
-                      <span className="px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-700 font-medium">
+                      <span className="text-[11px] text-brand-accent uppercase tracking-wide">
                         {pedido.estado}
                       </span>
                     </div>
@@ -245,28 +219,28 @@ export default function Dashboard() {
             </div>
 
             {/* Facturas Pendientes */}
-            <div className={`${CARD} p-6`}>
-              <div className="flex items-center justify-between mb-4">
+            <div className={`${CARD} p-7`}>
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <FileText className="text-red-500" size={20} />
-                  <h3 className="font-semibold text-lg text-slate-900">Facturas Pendientes</h3>
+                  <FileText className="text-[#8a8175]" size={17} strokeWidth={1.6} />
+                  <h3 className="font-display text-lg text-[#201c17]">Facturas Pendientes</h3>
                 </div>
-                <Link href="/dashboard/facturas" className="text-sm text-brand-primary hover:underline">
+                <Link href="/dashboard/facturas" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
                   Ver todas
                 </Link>
               </div>
 
               {resumen.facturasPendientes.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">No hay facturas pendientes</div>
+                <div className="text-center py-8 text-[#a39a8c] text-sm">No hay facturas pendientes</div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-brand-line">
                   {resumen.facturasPendientes.map((factura: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-2xl border border-red-100">
+                    <div key={idx} className="flex items-center justify-between py-3">
                       <div>
-                        <p className="font-medium text-slate-900 text-sm">{factura.cliente}</p>
-                        <p className="text-xs text-slate-500">Factura #{factura.num_factura}</p>
+                        <p className="text-sm text-[#201c17]">{factura.cliente}</p>
+                        <p className="text-xs text-[#8a8175] mt-0.5">Factura #{factura.num_factura}</p>
                       </div>
-                      <span className="text-sm font-bold text-red-600">
+                      <span className="text-sm font-medium text-red-800">
                         L. {Number(factura.saldo_pendiente).toLocaleString()}
                       </span>
                     </div>
