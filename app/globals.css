@@ -1,15 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f6f9;
-  --foreground: #0f172a;
+  --background: #faf8f4;
+  --foreground: #201c17;
 
-  /* Marca Bloquera Tonka */
-  --color-brand-ink: #0b1220;      /* fondo sidebar/header */
-  --color-brand-ink-soft: #111c2e; /* header un tono más claro */
-  --color-brand-primary: #1e40af;  /* azul de acción principal */
-  --color-brand-primary-dark: #17337f;
-  --color-brand-accent: #f59e0b;   /* ámbar TONKA */
+  /* Marca Bloquera Tonka — paleta elegante: tinta + oro envejecido sobre marfil */
+  --color-brand-ink: #15130f;        /* fondo sidebar */
+  --color-brand-ink-soft: #221e18;   /* hover sobre tinta */
+  --color-brand-primary: #1c1a16;    /* botones primarios (casi negro cálido) */
+  --color-brand-primary-dark: #000000;
+  --color-brand-accent: #b6893f;     /* oro envejecido, usar con moderación */
+  --color-brand-accent-soft: #f4ead4; /* fondo suave para el acento */
+  --color-brand-line: #e7e2d8;       /* líneas/hairlines cálidos */
 }
 
 @theme inline {
@@ -20,13 +22,19 @@
   --color-brand-primary: var(--color-brand-primary);
   --color-brand-primary-dark: var(--color-brand-primary-dark);
   --color-brand-accent: var(--color-brand-accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-accent-soft: var(--color-brand-accent-soft);
+  --color-brand-line: var(--color-brand-line);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
 }
 
 /* Scrollbar discreto, coherente con el resto de la UI */
@@ -38,12 +46,12 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d9d2c3;
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #c2b8a1;
   background-clip: content-box;
 }

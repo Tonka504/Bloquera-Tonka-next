@@ -31,7 +31,6 @@ export default function PedidosPage() {
     cargarPedidos();
   }, []);
 
-  // Filtrar pedidos
   useEffect(() => {
     if (!busqueda.trim()) {
       setPedidosFiltrados(pedidos);
@@ -56,7 +55,6 @@ export default function PedidosPage() {
     const cantidad = parseInt((form.elements.namedItem('cantidad') as HTMLInputElement).value);
     const precio = parseFloat((form.elements.namedItem('precio') as HTMLInputElement).value);
 
-    // Validaciones
     if (cantidad <= 0) {
       toast.error('La cantidad debe ser mayor a 0');
       return;
@@ -153,110 +151,110 @@ export default function PedidosPage() {
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
-      case 'Pagado': return 'bg-emerald-100 text-emerald-700';
-      case 'Con Anticipo': return 'bg-blue-100 text-blue-700';
-      case 'Pendiente': return 'bg-amber-100 text-amber-700';
-      default: return 'bg-slate-100 text-slate-600';
+      case 'Pagado': return 'text-emerald-800';
+      case 'Con Anticipo': return 'text-[#8a8175]';
+      case 'Pendiente': return 'text-brand-accent';
+      default: return 'text-[#8a8175]';
     }
   };
 
   return (
-    <div className="p-8 relative">
+    <div className="px-10 py-9 relative">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-9">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Pedidos</h1>
-          <p className="text-slate-500 mt-1">Gestión de pedidos y despachos</p>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Gestión</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Pedidos</h1>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-brand-primary hover:bg-brand-primary-dark text-white px-6 py-3 rounded-2xl font-medium transition shadow-sm shadow-brand-primary/25"
+          className="flex items-center gap-2 bg-brand-primary hover:bg-brand-ink-soft text-white px-5 py-2.5 transition-colors text-sm tracking-wide"
         >
-          <Plus size={20} /> Nuevo Pedido
+          <Plus size={16} /> Nuevo Pedido
         </button>
       </div>
 
       {/* Búsqueda */}
-      <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+      <div className="relative mb-8 max-w-md">
+        <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
         <input
           type="text"
           placeholder="Buscar por cliente, producto o ID..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary text-sm transition"
+          className="w-full pl-6 pr-4 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-sm transition-colors"
         />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200/70 overflow-hidden">
+      <div className="border border-brand-line">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Producto</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Cantidad</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Precio</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Pago</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
+            <thead>
+              <tr className="border-b border-brand-line">
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">ID</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Cliente</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Producto</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Cantidad</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Precio</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Total</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Estado</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Pago</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Acciones</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-brand-line">
               {loading ? (
                 <tr>
                   <td colSpan={9} className="text-center py-16">
-                    <div className="flex items-center justify-center gap-2 text-slate-400">
+                    <div className="flex items-center justify-center gap-2 text-[#a39a8c]">
                       <Loader2 className="animate-spin" size={18} /> Cargando pedidos...
                     </div>
                   </td>
                 </tr>
               ) : pedidosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-16 text-slate-400">
-                    <ShoppingCart size={40} className="mx-auto mb-3 text-slate-300" />
+                  <td colSpan={9} className="text-center py-16 text-[#a39a8c]">
+                    <ShoppingCart size={32} strokeWidth={1.4} className="mx-auto mb-3 text-[#d9d2c3]" />
                     {busqueda ? 'No se encontraron pedidos' : 'No hay pedidos registrados'}
                   </td>
                 </tr>
               ) : (
                 pedidosFiltrados.map((p: any) => (
-                  <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900">#{p.id}</td>
-                    <td className="px-6 py-4 text-slate-700">{p.cliente}</td>
-                    <td className="px-6 py-4 text-slate-700">{p.producto}</td>
-                    <td className="px-6 py-4 text-right text-slate-700">{p.cantidad.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-right text-slate-700">L. {Number(p.precio_unitario).toFixed(2)}</td>
-                    <td className="px-6 py-4 text-right font-semibold text-slate-900">
+                  <tr key={p.id} className="hover:bg-[#faf8f4] transition-colors">
+                    <td className="px-5 py-4 text-[#201c17]">#{p.id}</td>
+                    <td className="px-5 py-4 text-[#201c17]">{p.cliente}</td>
+                    <td className="px-5 py-4 text-[#4a463e]">{p.producto}</td>
+                    <td className="px-5 py-4 text-right text-[#4a463e]">{p.cantidad.toLocaleString()}</td>
+                    <td className="px-5 py-4 text-right text-[#4a463e]">L. {Number(p.precio_unitario).toFixed(2)}</td>
+                    <td className="px-5 py-4 text-right font-medium text-[#201c17]">
                       L. {(p.cantidad * p.precio_unitario).toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-700 font-medium">
+                    <td className="px-5 py-4 text-center">
+                      <span className="text-xs text-brand-accent uppercase tracking-wide">
                         {p.estado}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1 text-xs rounded-full font-medium ${getEstadoColor(p.estado_pago || 'Pendiente')}`}>
+                    <td className="px-5 py-4 text-center">
+                      <span className={`text-xs uppercase tracking-wide ${getEstadoColor(p.estado_pago || 'Pendiente')}`}>
                         {p.estado_pago || 'Pendiente'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-5 py-4 text-center">
                       <div className="flex justify-center gap-1">
                         <button
                           onClick={() => abrirModalDespacho(p)}
-                          className="p-2 text-brand-primary hover:bg-blue-50 rounded-xl transition-colors"
+                          className="p-1.5 text-[#8a8175] hover:text-brand-accent transition-colors"
                           title="Despachar"
                         >
-                          <Truck size={18} />
+                          <Truck size={16} strokeWidth={1.6} />
                         </button>
                         <button
                           onClick={() => abrirModalEliminar(p)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                          className="p-1.5 text-[#8a8175] hover:text-red-800 transition-colors"
                           title="Eliminar"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} strokeWidth={1.6} />
                         </button>
                       </div>
                     </td>
@@ -268,41 +266,41 @@ export default function PedidosPage() {
         </div>
 
         {/* Contador */}
-        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+        <div className="px-5 py-3 border-t border-brand-line text-xs text-[#8a8175]">
           Mostrando {pedidosFiltrados.length} de {pedidos.length} pedidos
         </div>
       </div>
 
       {/* ========== MODAL NUEVO PEDIDO ========== */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
-              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Nuevo Pedido</h3>
+              <h3 className="font-display text-2xl text-[#201c17]">Nuevo Pedido</h3>
               <button
                 onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-[#8a8175] hover:text-[#201c17] transition-colors"
               >
-                <X size={24} />
+                <X size={20} strokeWidth={1.6} />
               </button>
             </div>
 
             <form onSubmit={crearPedido} className="px-8 pb-8 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Cliente *</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Cliente *</label>
                 <input
                   name="cliente"
                   required
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] placeholder:text-[#c2b8a1] focus:outline-none focus:border-brand-accent transition-colors"
                   placeholder="Nombre completo del cliente"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Producto</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Producto</label>
                 <select
                   name="producto"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition bg-white"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors bg-white"
                 >
                   <option value='Bloque de 4"'>Bloque de 4"</option>
                   <option value='Bloque de 5"'>Bloque de 5"</option>
@@ -310,37 +308,37 @@ export default function PedidosPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Cantidad *</label>
+                  <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Cantidad *</label>
                   <input
                     name="cantidad"
                     type="number"
                     min="1"
                     defaultValue="100"
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                    className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Precio Unitario (L.) *</label>
+                  <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Precio Unit. (L.) *</label>
                   <input
                     name="precio"
                     type="number"
                     step="0.01"
                     min="0.01"
                     defaultValue="25"
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                    className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Estado de Pago</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Estado de Pago</label>
                 <select
                   name="estado_pago"
                   value={estadoPago}
                   onChange={(e) => setEstadoPago(e.target.value)}
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition bg-white"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors bg-white"
                 >
                   <option value="Pendiente">Pendiente</option>
                   <option value="Pagado">Pagado</option>
@@ -350,14 +348,14 @@ export default function PedidosPage() {
 
               {estadoPago === "Con Anticipo" && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Monto del Anticipo (L.)</label>
+                  <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Monto del Anticipo (L.)</label>
                   <input
                     name="anticipo"
                     type="number"
                     step="0.01"
                     min="0.01"
                     defaultValue="0"
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                    className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                     placeholder="Ej: 500"
                   />
                 </div>
@@ -367,13 +365,13 @@ export default function PedidosPage() {
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }}
-                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                  className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 rounded-2xl bg-brand-primary hover:bg-brand-primary-dark text-white font-semibold transition-colors shadow-sm shadow-brand-primary/25"
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-ink-soft text-white text-sm tracking-wide transition-colors"
                 >
                   Guardar Pedido
                 </button>
@@ -385,70 +383,63 @@ export default function PedidosPage() {
 
       {/* ========== MODAL DESPACHO COMPLETO ========== */}
       {showDespachoModal && pedidoADespachar && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Despachar Pedido</h3>
-                <p className="text-sm text-slate-500 mt-1">#{pedidoADespachar.id} — {pedidoADespachar.cliente}</p>
+                <h3 className="font-display text-2xl text-[#201c17]">Despachar Pedido</h3>
+                <p className="text-sm text-[#8a8175] mt-1">#{pedidoADespachar.id} — {pedidoADespachar.cliente}</p>
               </div>
               <button
                 onClick={() => { setShowDespachoModal(false); setPedidoADespachar(null); }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-[#8a8175] hover:text-[#201c17] transition-colors"
               >
-                <X size={24} />
+                <X size={20} strokeWidth={1.6} />
               </button>
             </div>
 
             {/* RESUMEN DE PAGO */}
             <div className="mx-8 mb-6">
-              <h4 className="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">Resumen de Pago</h4>
-              <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                {/* Producto */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100">
-                  <span className="text-sm text-slate-500">Producto</span>
-                  <span className="text-sm font-medium text-slate-900">{pedidoADespachar.producto}</span>
+              <h4 className="text-xs font-medium text-[#8a8175] uppercase tracking-[0.12em] mb-3">Resumen de Pago</h4>
+              <div className="border border-brand-line divide-y divide-brand-line">
+                <div className="flex justify-between items-center px-5 py-3">
+                  <span className="text-sm text-[#8a8175]">Producto</span>
+                  <span className="text-sm text-[#201c17]">{pedidoADespachar.producto}</span>
                 </div>
-                {/* Cantidad */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100">
-                  <span className="text-sm text-slate-500">Cantidad</span>
-                  <span className="text-sm font-medium text-slate-900">{pedidoADespachar.cantidad.toLocaleString()} und</span>
+                <div className="flex justify-between items-center px-5 py-3">
+                  <span className="text-sm text-[#8a8175]">Cantidad</span>
+                  <span className="text-sm text-[#201c17]">{pedidoADespachar.cantidad.toLocaleString()} und</span>
                 </div>
-                {/* Precio Unit. */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100">
-                  <span className="text-sm text-slate-500">Precio Unitario</span>
-                  <span className="text-sm font-medium text-slate-900">L. {Number(pedidoADespachar.precio_unitario).toFixed(2)}</span>
+                <div className="flex justify-between items-center px-5 py-3">
+                  <span className="text-sm text-[#8a8175]">Precio Unitario</span>
+                  <span className="text-sm text-[#201c17]">L. {Number(pedidoADespachar.precio_unitario).toFixed(2)}</span>
                 </div>
-                {/* Total a Pagar */}
-                <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100 bg-blue-50">
-                  <span className="text-sm font-semibold text-brand-primary">Total a Pagar</span>
-                  <span className="text-lg font-bold text-brand-primary">
+                <div className="flex justify-between items-center px-5 py-3 bg-[#faf8f4]">
+                  <span className="text-sm text-[#201c17] font-medium">Total a Pagar</span>
+                  <span className="text-lg font-display text-[#201c17]">
                     L. {(pedidoADespachar.cantidad * pedidoADespachar.precio_unitario).toFixed(2)}
                   </span>
                 </div>
-                {/* Anticipo (si existe) */}
                 {Number(pedidoADespachar.anticipo) > 0 && (
-                  <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100 bg-emerald-50">
-                    <span className="text-sm font-semibold text-emerald-700">Anticipo Recibido</span>
-                    <span className="text-lg font-bold text-emerald-700">
+                  <div className="flex justify-between items-center px-5 py-3">
+                    <span className="text-sm text-emerald-800 font-medium">Anticipo Recibido</span>
+                    <span className="text-sm font-medium text-emerald-800">
                       L. {Number(pedidoADespachar.anticipo).toFixed(2)}
                     </span>
                   </div>
                 )}
-                {/* Cantidad Faltante */}
                 {Number(pedidoADespachar.anticipo) > 0 && Number(pedidoADespachar.anticipo) < (pedidoADespachar.cantidad * pedidoADespachar.precio_unitario) && (
-                  <div className="flex justify-between items-center px-5 py-3 border-b border-slate-100 bg-amber-50">
-                    <span className="text-sm font-semibold text-amber-700">Cantidad Faltante</span>
-                    <span className="text-lg font-bold text-amber-700">
+                  <div className="flex justify-between items-center px-5 py-3">
+                    <span className="text-sm text-brand-accent font-medium">Cantidad Faltante</span>
+                    <span className="text-sm font-medium text-brand-accent">
                       L. {Math.max(0, (pedidoADespachar.cantidad * pedidoADespachar.precio_unitario) - Number(pedidoADespachar.anticipo)).toFixed(2)}
                     </span>
                   </div>
                 )}
-                {/* Estado */}
-                <div className="flex justify-between items-center px-5 py-3 bg-emerald-100">
-                  <span className="text-sm font-semibold text-emerald-800">Estado del Pago</span>
-                  <span className="px-3 py-1 text-sm font-bold text-emerald-800 bg-emerald-200 rounded-full">
-                    PAGADO
+                <div className="flex justify-between items-center px-5 py-3 bg-brand-ink">
+                  <span className="text-xs font-medium text-white/70 uppercase tracking-wide">Estado del Pago</span>
+                  <span className="text-xs font-medium text-brand-accent uppercase tracking-wide">
+                    Pagado
                   </span>
                 </div>
               </div>
@@ -456,49 +447,49 @@ export default function PedidosPage() {
 
             <form onSubmit={confirmarDespacho} className="px-8 pb-8 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha de Despacho *</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Fecha de Despacho *</label>
                 <input
                   name="fecha_despacho"
                   type="date"
                   required
                   defaultValue={new Date().toISOString().split('T')[0]}
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Identidad del Cliente</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Identidad del Cliente</label>
                 <input
                   name="identidad"
                   type="text"
                   placeholder="Ej: 0801-1990-12345"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] placeholder:text-[#c2b8a1] focus:outline-none focus:border-brand-accent transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">RTN</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">RTN</label>
                 <input
                   name="rtn"
                   type="text"
                   placeholder="Ej: 08011990123456"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] placeholder:text-[#c2b8a1] focus:outline-none focus:border-brand-accent transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Dirección</label>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Dirección</label>
                 <input
                   name="direccion"
                   type="text"
                   defaultValue="SANTA BARBARA, S.B., HONDURAS"
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition"
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                 />
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                <CheckCircle size={18} className="text-emerald-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-emerald-700">
+              <div className="flex items-start gap-3 p-4 bg-brand-accent-soft border border-brand-accent/20">
+                <CheckCircle size={16} strokeWidth={1.6} className="text-brand-accent mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-[#4a463e]">
                   Al confirmar el despacho, la factura se generará con estado <strong>PAGADO</strong>. El producto se entregó y el pago está completo.
                 </p>
               </div>
@@ -507,13 +498,13 @@ export default function PedidosPage() {
                 <button
                   type="button"
                   onClick={() => { setShowDespachoModal(false); setPedidoADespachar(null); }}
-                  className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                  className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors shadow-sm shadow-emerald-600/25"
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-ink-soft text-white text-sm tracking-wide transition-colors"
                 >
                   Confirmar Despacho y Pago
                 </button>
@@ -525,26 +516,26 @@ export default function PedidosPage() {
 
       {/* ========== MODAL CONFIRMAR ELIMINAR ========== */}
       {showEliminarModal && pedidoAEliminar && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={28} className="text-red-600" />
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md p-8 text-center">
+            <div className="w-14 h-14 border border-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={22} strokeWidth={1.6} className="text-red-800" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">¿Eliminar Pedido?</h3>
-            <p className="text-slate-500 mb-6">
-              Estás a punto de eliminar el pedido <span className="font-semibold text-slate-700">#{pedidoAEliminar.id}</span> de <span className="font-semibold text-slate-700">{pedidoAEliminar.cliente}</span>.
+            <h3 className="font-display text-xl text-[#201c17] mb-2">¿Eliminar Pedido?</h3>
+            <p className="text-[#8a8175] text-sm mb-6">
+              Estás a punto de eliminar el pedido <span className="font-medium text-[#201c17]">#{pedidoAEliminar.id}</span> de <span className="font-medium text-[#201c17]">{pedidoAEliminar.cliente}</span>.
               Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowEliminarModal(false); setPedidoAEliminar(null); }}
-                className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmarEliminar}
-                className="flex-1 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors shadow-sm shadow-red-600/25"
+                className="flex-1 py-3 bg-red-800 hover:bg-red-900 text-white text-sm tracking-wide transition-colors"
               >
                 Sí, Eliminar
               </button>
