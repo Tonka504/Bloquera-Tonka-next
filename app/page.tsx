@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, Lock, LogIn } from 'lucide-react';
+import { User, Lock, ArrowRight } from 'lucide-react';
 import { loginAction } from './actions';
 
 export default function LoginPage() {
@@ -29,38 +29,38 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1E2937] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#faf8f4]">
+      <div className="w-full max-w-sm">
+
         {/* Logo y Encabezado */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 mb-4">
-            <img 
-              src="/logo-bloquera.png" 
-              alt="Bloquera Tonka" 
-              className="w-full h-full object-contain drop-shadow-lg"
-            />
-          </div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Bloquera Tonka</h1>
-          <p className="text-slate-400 mt-1 text-lg">Sistema de Gestión Integral</p>
+        <div className="flex flex-col items-center mb-10">
+          <img
+            src="/logo-bloquera.png"
+            alt="Bloquera Tonka"
+            className="w-16 h-16 rounded-full ring-1 ring-brand-accent/40 mb-6"
+          />
+          <h1 className="font-display text-4xl text-[#201c17] tracking-wide text-center leading-tight">
+            Bloquera <span className="text-brand-accent">Tonka</span>
+          </h1>
+          <p className="text-[#8a8175] mt-2 text-sm tracking-[0.15em] uppercase">Sistema de Gestión</p>
         </div>
 
         {/* Tarjeta de Login */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border border-slate-200">
+        <div className="bg-white border border-brand-line p-9">
           <form onSubmit={handleLogin} className="space-y-6">
-            
+
             {/* Usuario */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.12em] mb-2">
                 Usuario
               </label>
               <div className="relative">
-                <User className="absolute left-4 top-4 text-slate-400" size={20} />
+                <User className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={17} strokeWidth={1.6} />
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E40AF] text-lg transition-all"
+                  className="w-full pl-7 pr-1 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-base text-[#201c17] transition-colors"
                   placeholder="admin"
                   required
                 />
@@ -69,16 +69,16 @@ export default function LoginPage() {
 
             {/* Contraseña */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.12em] mb-2">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-4 text-slate-400" size={20} />
+                <Lock className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={17} strokeWidth={1.6} />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1E40AF] text-lg transition-all"
+                  className="w-full pl-7 pr-1 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-base text-[#201c17] transition-colors"
                   placeholder="••••••••"
                   required
                 />
@@ -89,29 +89,29 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-70 mt-2"
+              className="w-full bg-brand-primary hover:bg-brand-ink-soft text-white py-3.5 flex items-center justify-center gap-2.5 transition-colors disabled:opacity-60 mt-2 tracking-wide text-sm"
             >
               {loading ? (
                 'Iniciando sesión...'
               ) : (
                 <>
-                  <LogIn size={22} />
                   Iniciar Sesión
+                  <ArrowRight size={16} strokeWidth={1.8} />
                 </>
               )}
             </button>
           </form>
 
           {/* Credenciales de prueba */}
-          <div className="mt-6 pt-6 border-t text-center">
-            <p className="text-sm text-slate-500">
-              Usuario de prueba: <span className="font-semibold text-slate-700">admin</span> / <span className="font-semibold text-slate-700">admin123</span>
+          <div className="mt-7 pt-6 border-t border-brand-line text-center">
+            <p className="text-xs text-[#8a8175] tracking-wide">
+              Usuario de prueba: <span className="font-medium text-[#201c17]">admin</span> / <span className="font-medium text-[#201c17]">admin123</span>
             </p>
           </div>
         </div>
 
-        <p className="text-center text-slate-500 text-sm mt-6">
-          © {new Date().getFullYear()} Bloquera Tonka - Santa Bárbara, S.B.
+        <p className="text-center text-[#a39a8c] text-xs mt-8 tracking-wide">
+          © {new Date().getFullYear()} Bloquera Tonka · Santa Bárbara, S.B.
         </p>
       </div>
     </div>

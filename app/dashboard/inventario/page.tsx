@@ -1,285 +1,455 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  LogOut, 
-  User, 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Users,
-  AlertTriangle,
+import { useState, useEffect } from 'react';
+import {
+  getInventario,
+  getHistorialInventario,
+  abastecerInventarioAction,
+  producirBloquesAction,
+} from '../../actions';
+import { toast } from 'sonner';
+import {
   Package,
-  FileText,
-  ShoppingCart,
-  ArrowRight
+  Truck,
+  Factory,
+  History,
+  AlertTriangle,
+  X,
+  Droplets,
+  Box,
+  Loader2,
 } from 'lucide-react';
-import { getDashboardResumen } from '../actions';
-import Link from 'next/link';
 
-export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [resumen, setResumen] = useState({
-    ventas: 0,
-    gastos: 0,
-    balance: 0,
-    por_cobrar: 0,
-    pedidosRecientes: [],
-    ventasPorMes: [],
-    stockBajo: [],
-    facturasPendientes: [],
-  });
+function formatTipo(tipo: string) {
+  return tipo
+    .replace('bloque_de_', 'Bloque de ')
+    .replace('cemento_bolsas', 'Cemento')
+    .replace('arena_m3', 'Arena');
+}
+
+function formatAccion(accion: string) {
+  const map: Record<string, string> = {
+    abastecimiento: 'Abastecimiento',
+    produccion: 'Producción',
+    produccion_uso: 'Uso en producción',
+    venta: 'Venta',
+  };
+  return map[accion] || accion;
+}
+
+function getStockStatus(cantidad: number) {
+  if (cantidad <= 0) return { label: 'Agotado', color: 'text-red-800' };
+  if (cantidad < 100) return { label: 'Bajo', color: 'text-brand-accent' };
+  return { label: 'Normal', color: 'text-emerald-800' };
+}
+
+export default function InventarioPage() {
+  const [inventario, setInventario] = useState<Record<string, number>>({});
+  const [historial, setHistorial] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+
+  const [showAbastecer, setShowAbastecer] = useState(false);
+  const [showProducir, setShowProducir] = useState(false);
+  const [showHistorial, setShowHistorial] = useState(false);
+
+  const [cementoAbastecer, setCementoAbastecer] = useState('');
+  const [arenaAbastecer, setArenaAbastecer] = useState('');
+
+  const [productoProducir, setProductoProducir] = useState('bloque_de_4"');
+  const [cantidadProducir, setCantidadProducir] = useState('');
+  const [cementoGastado, setCementoGastado] = useState('');
+  const [arenaGastada, setArenaGastada] = useState('');
+
+  async function cargarDatos() {
+    setLoading(true);
+
+    const inv = await getInventario();
+    if (inv.success) {
+      setInventario(inv.data);
+    }
+
+    const hist = await getHistorialInventario();
+    if (hist.success) {
+      setHistorial(hist.data);
+    }
+
+    setLoading(false);
+  }
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (!savedUser) {
-      router.push('/');
+    cargarDatos();
+  }, []);
+
+  async function handleAbastecer(e: React.FormEvent) {
+    e.preventDefault();
+    const cemento = parseFloat(cementoAbastecer) || 0;
+    const arena = parseFloat(arenaAbastecer) || 0;
+
+    if (cemento <= 0 && arena <= 0) {
+      toast.error('Ingresa al menos una cantidad válida');
       return;
     }
-    setUser(JSON.parse(savedUser));
-    cargarDatos();
-  }, [router]);
 
-  const cargarDatos = async () => {
-    const result: any = await getDashboardResumen();
-    if (result.data) {
-      setResumen(result.data);
+    const res = await abastecerInventarioAction(cemento, arena);
+    if (!res.success) {
+      toast.error(res.message || 'Error al abastecer');
+      return;
     }
-    setLoading(false);
-  };
+    toast.success('Abastecimiento registrado');
+    setCementoAbastecer('');
+    setArenaAbastecer('');
+    setShowAbastecer(false);
+    cargarDatos();
+  }
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    router.push('/');
-  };
+  async function handleProducir(e: React.FormEvent) {
+    e.preventDefault();
+    const cantidad = parseInt(cantidadProducir) || 0;
+    const cemento = parseFloat(cementoGastado) || 0;
+    const arena = parseFloat(arenaGastada) || 0;
 
-  if (!user) return null;
+    if (cantidad <= 0) {
+      toast.error('La cantidad de bloques debe ser mayor a 0');
+      return;
+    }
+    if (cemento <= 0) {
+      toast.error('La cantidad de cemento gastado debe ser mayor a 0');
+      return;
+    }
+    if (arena <= 0) {
+      toast.error('La cantidad de arena gastada debe ser mayor a 0');
+      return;
+    }
 
-  const maxVentas = Math.max(...resumen.ventasPorMes.map((v: any) => Number(v.total)), 1);
+    const res = await producirBloquesAction({
+      producto: productoProducir,
+      cantidad,
+      cemento_gastado: cemento,
+      arena_gastada: arena,
+    });
 
-  const formatMes = (mesStr: string) => {
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const fechaStr = mesStr.length === 7 ? mesStr + '-01' : mesStr;
-    const date = new Date(fechaStr);
-    return meses[date.getMonth()] || mesStr;
-  };
+    if (!res.success) {
+      toast.error(res.message || 'Error en la producción');
+      return;
+    }
+    toast.success('Producción registrada correctamente');
+    setCantidadProducir('');
+    setCementoGastado('');
+    setArenaGastada('');
+    setShowProducir(false);
+    cargarDatos();
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center gap-3 h-96 text-[#8a8175]">
+        <Loader2 className="animate-spin" size={22} />
+        Cargando inventario...
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="px-10 py-9 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500">Resumen general de tu bloquera</p>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Materiales</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Inventario</h1>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-2xl transition"
-        >
-          <LogOut size={18} />
-          Cerrar Sesi&oacute;n
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowHistorial(true)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+          >
+            <History className="w-4 h-4" strokeWidth={1.6} />
+            Historial
+          </button>
+          <button
+            onClick={() => setShowAbastecer(true)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+          >
+            <Truck className="w-4 h-4" strokeWidth={1.6} />
+            Abastecer
+          </button>
+          <button
+            onClick={() => setShowProducir(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white hover:bg-brand-ink-soft transition-colors text-sm"
+          >
+            <Factory className="w-4 h-4" strokeWidth={1.6} />
+            Producir
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-slate-500">Cargando datos...</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Ventas Totales</p>
-                  <p className="text-3xl font-bold text-emerald-600 mt-1">
-                    L. {resumen.ventas.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                  <TrendingUp className="text-emerald-600" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Gastos Totales</p>
-                  <p className="text-3xl font-bold text-red-600 mt-1">
-                    L. {resumen.gastos.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center">
-                  <TrendingDown className="text-red-600" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Balance</p>
-                  <p className={`text-3xl font-bold mt-1 ${resumen.balance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    L. {resumen.balance.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
-                  <DollarSign className="text-blue-600" size={24} />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-500">Por Cobrar</p>
-                  <p className="text-3xl font-bold text-amber-600 mt-1">
-                    L. {resumen.por_cobrar.toLocaleString()}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center">
-                  <Users className="text-amber-600" size={24} />
-                </div>
-              </div>
-            </div>
+      {/* Alertas de stock bajo */}
+      {(inventario['bloque_de_4"'] < 100 || inventario['bloque_de_5"'] < 100 || inventario['bloque_de_6"'] < 100) && (
+        <div className="border border-brand-accent/30 bg-brand-accent-soft p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-brand-accent mt-0.5 flex-shrink-0" strokeWidth={1.6} />
+          <div>
+            <h3 className="font-medium text-[#201c17] text-sm">Stock bajo detectado</h3>
+            <p className="text-[#6b6357] text-sm mt-1">
+              {[
+                inventario['bloque_de_4"'] < 100 && `Bloque de 4": ${inventario['bloque_de_4"']} und`,
+                inventario['bloque_de_5"'] < 100 && `Bloque de 5": ${inventario['bloque_de_5"']} und`,
+                inventario['bloque_de_6"'] < 100 && `Bloque de 6": ${inventario['bloque_de_6"']} und`,
+              ].filter(Boolean).join(' | ')}
+            </p>
           </div>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-lg text-slate-900">Ventas por Mes</h3>
-                <Link href="/dashboard/reportes" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                  Ver m&aacute;s <ArrowRight size={14} />
-                </Link>
+      {/* Tarjetas de Inventario */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 border border-brand-line divide-y md:divide-y-0 md:divide-x divide-brand-line">
+        {/* Cemento */}
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-[#8a8175] uppercase tracking-[0.1em]">Cemento</p>
+            <Droplets className="w-4 h-4 text-[#c2b8a1]" strokeWidth={1.6} />
+          </div>
+          <p className="font-display text-2xl text-[#201c17]">
+            {inventario.cemento_bolsas || 0}
+            <span className="text-sm font-sans font-normal text-[#8a8175] ml-1">bolsas</span>
+          </p>
+          {getStockStatus(inventario.cemento_bolsas || 0).label !== 'Normal' && (
+            <span className={`text-xs font-medium ${getStockStatus(inventario.cemento_bolsas || 0).color}`}>
+              {getStockStatus(inventario.cemento_bolsas || 0).label}
+            </span>
+          )}
+        </div>
+
+        {/* Arena */}
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-[#8a8175] uppercase tracking-[0.1em]">Arena</p>
+            <Box className="w-4 h-4 text-[#c2b8a1]" strokeWidth={1.6} />
+          </div>
+          <p className="font-display text-2xl text-[#201c17]">
+            {(inventario.arena_m3 || 0).toFixed(2)}
+            <span className="text-sm font-sans font-normal text-[#8a8175] ml-1">m³</span>
+          </p>
+          {getStockStatus(inventario.arena_m3 || 0).label !== 'Normal' && (
+            <span className={`text-xs font-medium ${getStockStatus(inventario.arena_m3 || 0).color}`}>
+              {getStockStatus(inventario.arena_m3 || 0).label}
+            </span>
+          )}
+        </div>
+
+        {/* Bloques */}
+        {['bloque_de_4"', 'bloque_de_5"', 'bloque_de_6"'].map((tipo) => {
+          const cantidad = inventario[tipo] || 0;
+          const status = getStockStatus(cantidad);
+          return (
+            <div key={tipo} className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-[#8a8175] uppercase tracking-[0.1em]">{formatTipo(tipo)}</p>
+                <Package className="w-4 h-4 text-[#c2b8a1]" strokeWidth={1.6} />
               </div>
-
-              {resumen.ventasPorMes.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">No hay datos de ventas</div>
-              ) : (
-                <div className="flex items-end gap-3 h-48">
-                  {resumen.ventasPorMes.map((item: any, idx: number) => {
-                    const height = Math.max((Number(item.total) / maxVentas) * 100, 5);
-                    return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="relative w-full flex justify-center">
-                          <div 
-                            className="w-full max-w-[60px] bg-blue-600 rounded-t-xl transition-all hover:bg-blue-700"
-                            style={{ height: `${height}%`, minHeight: '8px' }}
-                            title={`L. ${Number(item.total).toLocaleString()}`}
-                          />
-                        </div>
-                        <span className="text-xs text-slate-500 font-medium">
-                          {formatMes(item.mes)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+              <p className="font-display text-2xl text-[#201c17]">
+                {cantidad.toLocaleString()}
+                <span className="text-sm font-sans font-normal text-[#8a8175] ml-1">und</span>
+              </p>
+              {status.label !== 'Normal' && (
+                <span className={`text-xs font-medium ${status.color}`}>
+                  {status.label}
+                </span>
               )}
             </div>
+          );
+        })}
+      </div>
 
-            <div className="bg-white rounded-3xl p-6 shadow-sm border">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="text-amber-500" size={20} />
-                <h3 className="font-semibold text-lg text-slate-900">Stock Bajo</h3>
-              </div>
-
-              {resumen.stockBajo.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                  <Package size={32} className="mx-auto mb-2 text-slate-300" />
-                  Todo el stock est&aacute; en niveles normales
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {resumen.stockBajo.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                      <div className="flex items-center gap-3">
-                        <Package size={16} className="text-amber-600" />
-                        <span className="text-sm font-medium text-slate-700">
-                          {item.tipo.replace('bloque_de_', 'Bloque de ').replace('"', '"')}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-amber-700">
-                        {item.cantidad} und
-                      </span>
-                    </div>
-                  ))}
-                  <Link 
-                    href="/dashboard/inventario" 
-                    className="block text-center text-sm text-blue-600 hover:underline mt-2"
-                  >
-                    Ir a Inventario &rarr;
-                  </Link>
-                </div>
-              )}
+      {/* Modal Abastecer */}
+      {showAbastecer && (
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md p-7">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-xl text-[#201c17]">Abastecer Inventario</h2>
+              <button onClick={() => setShowAbastecer(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                <X className="w-5 h-5" strokeWidth={1.6} />
+              </button>
             </div>
+            <form onSubmit={handleAbastecer} className="space-y-5">
+              <div>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Cemento (bolsas)</label>
+                <input
+                  type="number"
+                  value={cementoAbastecer}
+                  onChange={(e) => setCementoAbastecer(e.target.value)}
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                  placeholder="0"
+                  min="0"
+                  step="1"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Arena (m³)</label>
+                <input
+                  type="number"
+                  value={arenaAbastecer}
+                  onChange={(e) => setArenaAbastecer(e.target.value)}
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-brand-primary text-white py-3 text-sm tracking-wide hover:bg-brand-ink-soft transition-colors"
+              >
+                Registrar Abastecimiento
+              </button>
+            </form>
           </div>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-3xl p-6 shadow-sm border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="text-blue-600" size={20} />
-                  <h3 className="font-semibold text-lg text-slate-900">Pedidos Recientes</h3>
-                </div>
-                <Link href="/dashboard/pedidos" className="text-sm text-blue-600 hover:underline">
-                  Ver todos
-                </Link>
+      {/* Modal Producir - MANUAL */}
+      {showProducir && (
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md p-7 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-display text-xl text-[#201c17]">Registrar Producción</h2>
+              <button onClick={() => setShowProducir(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                <X className="w-5 h-5" strokeWidth={1.6} />
+              </button>
+            </div>
+            <form onSubmit={handleProducir} className="space-y-5">
+              <div>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Tipo de Bloque</label>
+                <select
+                  value={productoProducir}
+                  onChange={(e) => setProductoProducir(e.target.value)}
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors bg-white"
+                >
+                  <option value='bloque_de_4"'>Bloque de 4&quot;</option>
+                  <option value='bloque_de_5"'>Bloque de 5&quot;</option>
+                  <option value='bloque_de_6"'>Bloque de 6&quot;</option>
+                </select>
               </div>
 
-              {resumen.pedidosRecientes.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">No hay pedidos recientes</div>
+              <div>
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                  Cantidad de Bloques Producidos
+                </label>
+                <input
+                  type="number"
+                  value={cantidadProducir}
+                  onChange={(e) => setCantidadProducir(e.target.value)}
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                  placeholder="Ej: 500"
+                  min="1"
+                  step="1"
+                  required
+                />
+              </div>
+
+              <div className="border-t border-brand-line pt-5">
+                <p className="text-xs font-medium text-[#201c17] uppercase tracking-[0.1em] mb-3">Materiales Gastados (Ingreso Manual)</p>
+
+                <div className="grid grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                      Cemento (bolsas)
+                    </label>
+                    <input
+                      type="number"
+                      value={cementoGastado}
+                      onChange={(e) => setCementoGastado(e.target.value)}
+                      className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                      placeholder="Ej: 14"
+                      min="0.01"
+                      step="0.01"
+                      required
+                    />
+                    <p className="text-xs text-[#a39a8c] mt-1.5">
+                      Stock actual: {inventario.cemento_bolsas || 0} bolsas
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                      Arena (m³)
+                    </label>
+                    <input
+                      type="number"
+                      value={arenaGastada}
+                      onChange={(e) => setArenaGastada(e.target.value)}
+                      className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                      placeholder="Ej: 2.5"
+                      min="0.01"
+                      step="0.01"
+                      required
+                    />
+                    <p className="text-xs text-[#a39a8c] mt-1.5">
+                      Stock actual: {(inventario.arena_m3 || 0).toFixed(2)} m³
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-brand-accent-soft border border-brand-accent/20 text-sm text-[#4a463e]">
+                <p className="font-medium text-[#201c17]">Ingreso manual</p>
+                <p className="mt-1">
+                  Ingresa la cantidad real de cemento y arena que gastaste en esta producción. El sistema validará que haya suficiente stock disponible.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-brand-primary text-white py-3 text-sm tracking-wide hover:bg-brand-ink-soft transition-colors"
+              >
+                Registrar Producción
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Historial */}
+      {showHistorial && (
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-7 border-b border-brand-line">
+              <h2 className="font-display text-xl text-[#201c17]">Historial de Movimientos</h2>
+              <button onClick={() => setShowHistorial(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                <X className="w-5 h-5" strokeWidth={1.6} />
+              </button>
+            </div>
+            <div className="overflow-auto p-7">
+              {historial.length === 0 ? (
+                <div className="text-center text-[#8a8175] py-8">
+                  <History className="w-10 h-10 mx-auto mb-3 text-[#d9d2c3]" strokeWidth={1.4} />
+                  <p className="text-sm">No hay movimientos registrados</p>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {resumen.pedidosRecientes.map((pedido: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                <div className="divide-y divide-brand-line">
+                  {historial.map((item: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between py-4"
+                    >
                       <div>
-                        <p className="font-medium text-slate-900">{pedido.cliente}</p>
-                        <p className="text-sm text-slate-500">{pedido.producto} &mdash; {pedido.cantidad} und</p>
+                        <p className="text-sm text-[#201c17]">{formatAccion(item.accion)}</p>
+                        <p className="text-xs text-[#8a8175] mt-0.5">{formatTipo(item.tipo)}</p>
                       </div>
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-lg ${
-                        pedido.estado === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                      }`}>
-                        {pedido.estado}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-3xl p-6 shadow-sm border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="text-red-600" size={20} />
-                  <h3 className="font-semibold text-lg text-slate-900">Facturas Pendientes</h3>
-                </div>
-                <Link href="/dashboard/facturas" className="text-sm text-blue-600 hover:underline">
-                  Ver todas
-                </Link>
-              </div>
-
-              {resumen.facturasPendientes.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">No hay facturas pendientes</div>
-              ) : (
-                <div className="space-y-3">
-                  {resumen.facturasPendientes.map((factura: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
-                      <div>
-                        <p className="font-medium text-slate-900">{factura.cliente}</p>
-                        <p className="text-sm text-slate-500">Factura #{factura.num_factura}</p>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-[#201c17]">
+                          {item.accion === 'produccion_uso' ? '−' : '+'}
+                          {Number(item.cantidad).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-[#8a8175] mt-0.5">
+                          {new Date(item.fecha).toLocaleDateString('es-HN')}
+                        </p>
                       </div>
-                      <span className="text-sm font-bold text-red-600">
-                        L. {Number(factura.saldo_pendiente).toLocaleString()}
-                      </span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

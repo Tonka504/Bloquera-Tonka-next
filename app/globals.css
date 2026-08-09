@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f4;
+  --foreground: #201c17;
+
+  /* Marca Bloquera Tonka — paleta elegante: tinta + oro envejecido sobre marfil */
+  --color-brand-ink: #15130f;        /* fondo sidebar */
+  --color-brand-ink-soft: #221e18;   /* hover sobre tinta */
+  --color-brand-primary: #1c1a16;    /* botones primarios (casi negro cálido) */
+  --color-brand-primary-dark: #000000;
+  --color-brand-accent: #b6893f;     /* oro envejecido, usar con moderación */
+  --color-brand-accent-soft: #f4ead4; /* fondo suave para el acento */
+  --color-brand-line: #e7e2d8;       /* líneas/hairlines cálidos */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand-ink: var(--color-brand-ink);
+  --color-brand-ink-soft: var(--color-brand-ink-soft);
+  --color-brand-primary: var(--color-brand-primary);
+  --color-brand-primary-dark: var(--color-brand-primary-dark);
+  --color-brand-accent: var(--color-brand-accent);
+  --color-brand-accent-soft: var(--color-brand-accent-soft);
+  --color-brand-line: var(--color-brand-line);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Scrollbar discreto, coherente con el resto de la UI */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9d2c3;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c2b8a1;
+  background-clip: content-box;
 }

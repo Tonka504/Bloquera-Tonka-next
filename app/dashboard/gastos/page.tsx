@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Search, X, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Search, X, AlertCircle, Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { getGastos, crearGastoAction, eliminarGastoAction } from '../../actions';
 
@@ -33,13 +33,12 @@ export default function GastosPage() {
     cargarGastos();
   }, []);
 
-  // Filtrar localmente
   useEffect(() => {
     let filtrados = gastos;
 
     if (busqueda.trim()) {
       const filtro = busqueda.toLowerCase();
-      filtrados = filtrados.filter(g => 
+      filtrados = filtrados.filter(g =>
         g.descripcion?.toLowerCase().includes(filtro) ||
         g.categoria?.toLowerCase().includes(filtro)
       );
@@ -107,37 +106,26 @@ export default function GastosPage() {
     }
   };
 
-  const getCategoriaColor = (categoria: string) => {
-    const map: Record<string, string> = {
-      'Materia Prima': 'bg-purple-100 text-purple-700',
-      'Mano de Obra': 'bg-orange-100 text-orange-700',
-      'Transporte': 'bg-cyan-100 text-cyan-700',
-      'Servicios': 'bg-pink-100 text-pink-700',
-      'Otro': 'bg-slate-100 text-slate-600',
-    };
-    return map[categoria] || 'bg-slate-100 text-slate-600';
-  };
-
   const totalGastos = gastosFiltrados.reduce((sum, g) => sum + Number(g.monto), 0);
 
   return (
-    <div className="p-8">
+    <div className="px-10 py-9">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Gastos</h1>
-          <p className="text-slate-500">Registro de gastos operativos</p>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Operativo</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Gastos</h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           <div className="text-right">
-            <p className="text-xs text-slate-500">Total filtrado</p>
-            <p className="text-xl font-bold text-slate-900">L. {totalGastos.toLocaleString()}</p>
+            <p className="text-[10px] text-[#8a8175] uppercase tracking-wide">Total filtrado</p>
+            <p className="font-display text-xl text-[#201c17]">L. {totalGastos.toLocaleString()}</p>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-medium transition"
+            className="flex items-center gap-2 bg-brand-primary hover:bg-brand-ink-soft text-white px-5 py-2.5 transition-colors text-sm tracking-wide"
           >
-            <Plus size={20} />
+            <Plus size={16} />
             Nuevo Gasto
           </button>
         </div>
@@ -146,19 +134,19 @@ export default function GastosPage() {
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
+          <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
           <input
             type="text"
             placeholder="Buscar gasto..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 text-sm"
+            className="w-full pl-6 pr-4 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-sm transition-colors"
           />
         </div>
         <select
           value={filtroCategoria}
           onChange={(e) => setFiltroCategoria(e.target.value)}
-          className="px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 text-sm bg-white"
+          className="px-4 py-2.5 border border-brand-line focus:outline-none focus:border-brand-accent text-sm bg-white transition-colors"
         >
           <option value="">Todas las categorías</option>
           {CATEGORIAS.map(cat => (
@@ -168,47 +156,56 @@ export default function GastosPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
+      <div className="border border-brand-line">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Fecha</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Descripción</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Categoría</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Monto</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Acciones</th>
+            <thead>
+              <tr className="border-b border-brand-line">
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Fecha</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Descripción</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Categoría</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Monto</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]">Acciones</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-brand-line">
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-12 text-slate-400">Cargando...</td></tr>
+                <tr>
+                  <td colSpan={5} className="text-center py-16">
+                    <div className="flex items-center justify-center gap-2 text-[#a39a8c]">
+                      <Loader2 className="animate-spin" size={18} /> Cargando gastos...
+                    </div>
+                  </td>
+                </tr>
               ) : gastosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-400">
+                  <td colSpan={5} className="text-center py-16 text-[#a39a8c]">
+                    <Receipt size={32} strokeWidth={1.4} className="mx-auto mb-3 text-[#d9d2c3]" />
                     {busqueda || filtroCategoria ? 'No se encontraron gastos' : 'No hay gastos registrados'}
                   </td>
                 </tr>
               ) : (
                 gastosFiltrados.map((gasto: any) => (
-                  <tr key={gasto.id} className="border-t hover:bg-slate-50 transition">
-                    <td className="px-6 py-4 text-slate-600 text-sm">{gasto.fecha}</td>
-                    <td className="px-6 py-4 text-slate-700">{gasto.descripcion}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 text-xs rounded-full font-medium ${getCategoriaColor(gasto.categoria)}`}>
+                  <tr key={gasto.id} className="hover:bg-[#faf8f4] transition-colors">
+                    <td className="px-5 py-4 text-[#8a8175] text-sm">
+                      {gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-HN') : ''}
+                    </td>
+                    <td className="px-5 py-4 text-[#201c17]">{gasto.descripcion}</td>
+                    <td className="px-5 py-4">
+                      <span className="text-xs text-[#8a8175] uppercase tracking-wide">
                         {gasto.categoria}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-slate-900">
+                    <td className="px-5 py-4 text-right font-medium text-[#201c17]">
                       L. {Number(gasto.monto).toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <button 
+                    <td className="px-5 py-4 text-center">
+                      <button
                         onClick={() => abrirModalEliminar(gasto)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition"
+                        className="p-1.5 text-[#8a8175] hover:text-red-800 transition-colors"
                         title="Eliminar"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} strokeWidth={1.6} />
                       </button>
                     </td>
                   </tr>
@@ -218,59 +215,59 @@ export default function GastosPage() {
           </table>
         </div>
 
-        <div className="px-6 py-3 bg-slate-50 border-t text-xs text-slate-500">
+        <div className="px-5 py-3 border-t border-brand-line text-xs text-[#8a8175]">
           Mostrando {gastosFiltrados.length} de {gastos.length} gastos
         </div>
       </div>
 
       {/* Modal Nuevo Gasto */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl">
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
-              <h3 className="text-2xl font-bold text-slate-900">Nuevo Gasto</h3>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={24} />
+              <h3 className="font-display text-2xl text-[#201c17]">Nuevo Gasto</h3>
+              <button onClick={() => setShowModal(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                <X size={20} strokeWidth={1.6} />
               </button>
             </div>
             <form onSubmit={crearGasto} className="px-8 pb-8 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Descripción *</label>
-                <input 
-                  name="descripcion" 
-                  required 
-                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition" 
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Descripción *</label>
+                <input
+                  name="descripcion"
+                  required
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] placeholder:text-[#c2b8a1] focus:outline-none focus:border-brand-accent transition-colors"
                   placeholder="Ej: Compra de cemento, pago de luz, etc."
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Categoría</label>
-                  <select name="categoria" className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-blue-500 bg-white">
+                  <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Categoría</label>
+                  <select name="categoria" className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base focus:outline-none focus:border-brand-accent bg-white transition-colors">
                     {CATEGORIAS.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Monto (L.) *</label>
-                  <input 
-                    name="monto" 
-                    type="number" 
-                    step="0.01" 
+                  <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Monto (L.) *</label>
+                  <input
+                    name="monto"
+                    type="number"
+                    step="0.01"
                     min="0.01"
-                    required 
-                    className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-base text-slate-900 focus:outline-none focus:border-blue-500 transition" 
+                    required
+                    className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" className="flex-1 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition">
+                <button type="submit" className="flex-1 py-3 bg-brand-primary hover:bg-brand-ink-soft text-white text-sm tracking-wide transition-colors">
                   Guardar Gasto
                 </button>
               </div>
@@ -281,26 +278,26 @@ export default function GastosPage() {
 
       {/* Modal Eliminar */}
       {showEliminarModal && gastoAEliminar && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle size={28} className="text-red-600" />
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md p-8 text-center">
+            <div className="w-14 h-14 border border-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={22} strokeWidth={1.6} className="text-red-800" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">¿Eliminar Gasto?</h3>
-            <p className="text-slate-500 mb-6">
-              Vas a eliminar <span className="font-semibold text-slate-700">{gastoAEliminar.descripcion}</span> por <span className="font-semibold text-slate-700">L. {Number(gastoAEliminar.monto).toFixed(2)}</span>.
+            <h3 className="font-display text-xl text-[#201c17] mb-2">¿Eliminar Gasto?</h3>
+            <p className="text-[#8a8175] text-sm mb-6">
+              Vas a eliminar <span className="font-medium text-[#201c17]">{gastoAEliminar.descripcion}</span> por <span className="font-medium text-[#201c17]">L. {Number(gastoAEliminar.monto).toFixed(2)}</span>.
               Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
-              <button 
-                onClick={() => { setShowEliminarModal(false); setGastoAEliminar(null); }} 
-                className="flex-1 py-3.5 rounded-2xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition"
+              <button
+                onClick={() => { setShowEliminarModal(false); setGastoAEliminar(null); }}
+                className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
               >
                 Cancelar
               </button>
-              <button 
-                onClick={confirmarEliminar} 
-                className="flex-1 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold transition"
+              <button
+                onClick={confirmarEliminar}
+                className="flex-1 py-3 bg-red-800 hover:bg-red-900 text-white text-sm tracking-wide transition-colors"
               >
                 Sí, Eliminar
               </button>
