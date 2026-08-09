@@ -150,31 +150,31 @@ export default function InventarioPage() {
   }
 
   return (
-    <div className="px-10 py-9 space-y-8">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Materiales</p>
           <h1 className="font-display text-3xl text-[#201c17]">Inventario</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowHistorial(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
           >
             <History className="w-4 h-4" strokeWidth={1.6} />
             Historial
           </button>
           <button
             onClick={() => setShowAbastecer(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
           >
             <Truck className="w-4 h-4" strokeWidth={1.6} />
             Abastecer
           </button>
           <button
             onClick={() => setShowProducir(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white hover:bg-brand-ink-soft transition-colors text-sm"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary text-white hover:bg-brand-ink-soft transition-colors text-sm"
           >
             <Factory className="w-4 h-4" strokeWidth={1.6} />
             Producir

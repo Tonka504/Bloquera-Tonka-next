@@ -109,7 +109,7 @@ export default function GastosPage() {
   const totalGastos = gastosFiltrados.reduce((sum, g) => sum + Number(g.monto), 0);
 
   return (
-    <div className="px-10 py-9">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>

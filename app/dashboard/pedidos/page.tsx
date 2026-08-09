@@ -159,7 +159,7 @@ export default function PedidosPage() {
   };
 
   return (
-    <div className="px-10 py-9 relative">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 relative">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-9">
         <div>

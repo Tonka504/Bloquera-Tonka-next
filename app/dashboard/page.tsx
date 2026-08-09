@@ -64,8 +64,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="px-10 py-9">
-      <div className="mb-10">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
+      <div className="mb-8 lg:mb-10">
         <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
         <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
       </div>
@@ -118,7 +118,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Gráfico de Ventas */}
-            <div className={`${CARD} lg:col-span-2 p-7`}>
+            <div className={`${CARD} lg:col-span-2 p-5 sm:p-7`}>
               <div className="flex items-center justify-between mb-8">
                 <h3 className="font-display text-lg text-[#201c17]">Ventas por Mes</h3>
                 <Link href="/dashboard/reportes" className="text-xs text-[#8a8175] hover:text-brand-accent flex items-center gap-1 transition-colors uppercase tracking-wide">
@@ -152,7 +152,7 @@ export default function Dashboard() {
             </div>
 
             {/* Alertas de Stock Bajo */}
-            <div className={`${CARD} p-7`}>
+            <div className={`${CARD} p-5 sm:p-7`}>
               <div className="flex items-center gap-2 mb-5">
                 <AlertTriangle className="text-brand-accent" size={17} strokeWidth={1.6} />
                 <h3 className="font-display text-lg text-[#201c17]">Stock Bajo</h3>
@@ -188,7 +188,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Pedidos Recientes */}
-            <div className={`${CARD} p-7`}>
+            <div className={`${CARD} p-5 sm:p-7`}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="text-[#8a8175]" size={17} strokeWidth={1.6} />
@@ -219,7 +219,7 @@ export default function Dashboard() {
             </div>
 
             {/* Facturas Pendientes */}
-            <div className={`${CARD} p-7`}>
+            <div className={`${CARD} p-5 sm:p-7`}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <FileText className="text-[#8a8175]" size={17} strokeWidth={1.6} />

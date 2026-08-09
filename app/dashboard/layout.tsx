@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -10,6 +11,8 @@ import {
   DollarSign,
   BarChart3,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 
 // Nota: "Configuración" se ocultó del menú a pedido — la ruta
@@ -25,25 +28,54 @@ const menuItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Cerrar el menú móvil al cambiar de ruta
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen bg-[#faf8f4]">
 
+      {/* Backdrop (solo móvil, cuando el sidebar está abierto) */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-[#15130f]/60 backdrop-blur-sm lg:hidden"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-brand-ink text-white flex flex-col">
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 shrink-0 bg-brand-ink text-white flex flex-col transform transition-transform duration-300 ease-out lg:static lg:z-auto lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
 
         {/* Logo / Encabezado del Sidebar */}
         <div className="px-7 py-8">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo-bloquera.png"
-              alt="Bloquera Tonka"
-              className="w-10 h-10 rounded-full ring-1 ring-brand-accent/40"
-            />
-            <div>
-              <div className="font-display text-xl leading-none tracking-wide">Bloquera</div>
-              <div className="font-display text-xl leading-none tracking-wide text-brand-accent -mt-0.5">Tonka</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img
+                src="/logo-bloquera.png"
+                alt="Bloquera Tonka"
+                className="w-10 h-10 rounded-full ring-1 ring-brand-accent/40"
+              />
+              <div>
+                <div className="font-display text-xl leading-none tracking-wide">Bloquera</div>
+                <div className="font-display text-xl leading-none tracking-wide text-brand-accent -mt-0.5">Tonka</div>
+              </div>
             </div>
+            {/* Cerrar (solo móvil) */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-white/50 hover:text-white transition-colors"
+              aria-label="Cerrar menú"
+            >
+              <X size={20} strokeWidth={1.6} />
+            </button>
           </div>
           <div className="mt-5 h-px bg-white/10" />
         </div>
@@ -98,16 +130,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Header Superior */}
-        <header className="h-20 shrink-0 bg-[#faf8f4] border-b border-brand-line px-10 flex items-center justify-between">
-          <div className="font-display text-2xl text-[#201c17] tracking-wide">
-            {menuItems.find(item => item.href === pathname)?.label || 'Dashboard'}
+        <header className="h-16 lg:h-20 shrink-0 bg-[#faf8f4] border-b border-brand-line px-4 sm:px-6 lg:px-10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Botón hamburguesa (solo móvil) */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden -ml-1 p-1.5 text-[#4a463e] hover:text-[#201c17] transition-colors"
+              aria-label="Abrir menú"
+            >
+              <Menu size={22} strokeWidth={1.6} />
+            </button>
+            <div className="font-display text-lg sm:text-2xl text-[#201c17] tracking-wide truncate">
+              {menuItems.find(item => item.href === pathname)?.label || 'Dashboard'}
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-brand-ink flex items-center justify-center ring-1 ring-brand-accent/30">
+            <div className="w-9 h-9 rounded-full bg-brand-ink flex items-center justify-center ring-1 ring-brand-accent/30 shrink-0">
               <span className="text-brand-accent text-[11px] font-semibold tracking-wide">BT</span>
             </div>
-            <div className="leading-tight">
+            <div className="leading-tight hidden sm:block">
               <div className="font-medium text-[#201c17] text-sm">Admin</div>
               <div className="text-[11px] text-[#8a8175]">Administrador</div>
             </div>

@@ -30,7 +30,7 @@ export default function ReportesPage() {
   }
 
   if (!data) {
-    return <div className="px-10 py-9 text-red-800">Error al cargar el reporte</div>;
+    return <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 text-red-800">Error al cargar el reporte</div>;
   }
 
   const maxVentasMes = Math.max(...data.ventasPorMes.map((v: any) => Number(v.total)), 1);
@@ -44,8 +44,8 @@ export default function ReportesPage() {
   };
 
   return (
-    <div className="px-10 py-9">
-      <div className="mb-10">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
+      <div className="mb-8 lg:mb-10">
         <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Análisis</p>
         <h1 className="font-display text-3xl text-[#201c17]">Reporte General</h1>
       </div>
@@ -95,7 +95,7 @@ export default function ReportesPage() {
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Ventas por mes */}
-        <div className="border border-brand-line p-7">
+        <div className="border border-brand-line p-5 sm:p-7">
           <div className="flex items-center gap-2 mb-8">
             <BarChart3 className="text-[#8a8175]" size={17} strokeWidth={1.6} />
             <h3 className="font-display text-lg text-[#201c17]">Ventas por Mes</h3>
@@ -127,7 +127,7 @@ export default function ReportesPage() {
         </div>
 
         {/* Gastos por categoría */}
-        <div className="border border-brand-line p-7">
+        <div className="border border-brand-line p-5 sm:p-7">
           <div className="flex items-center gap-2 mb-8">
             <TrendingDown className="text-[#8a8175]" size={17} strokeWidth={1.6} />
             <h3 className="font-display text-lg text-[#201c17]">Gastos por Categoría</h3>
@@ -160,7 +160,7 @@ export default function ReportesPage() {
       </div>
 
       {/* Top clientes */}
-      <div className="border border-brand-line p-7">
+      <div className="border border-brand-line p-5 sm:p-7">
         <div className="flex items-center gap-2 mb-8">
           <Users className="text-[#8a8175]" size={17} strokeWidth={1.6} />
           <h3 className="font-display text-lg text-[#201c17]">Top Clientes</h3>
