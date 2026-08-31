@@ -1,15 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2 } from 'lucide-react';
-import { getReporteGeneral } from '../../actions';
+import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2, CalendarClock } from 'lucide-react';
+import { getReporteGeneral, getMesesDisponibles } from '../../actions';
+
+const MESES_LARGO = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+const formatMesLargo = (mesStr: string) => {
+  // mesStr: 'YYYY-MM'
+  const [anio, mesNum] = mesStr.split('-').map(Number);
+  const nombre = MESES_LARGO[(mesNum || 1) - 1] || mesStr;
+  return `${nombre} ${anio}`;
+};
 
 export default function ReportesPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [meses, setMeses] = useState<string[]>([]);
+  const [mesSeleccionado, setMesSeleccionado] = useState<string>('todos');
 
-  const cargarReporte = async () => {
-    const result = await getReporteGeneral();
+  const cargarReporte = async (mes?: string) => {
+    setLoading(true);
+    const result = await getReporteGeneral(mes && mes !== 'todos' ? mes : undefined);
     if (result.success) {
       setData(result.data);
     }
@@ -17,10 +32,23 @@ export default function ReportesPage() {
   };
 
   useEffect(() => {
-    cargarReporte();
+    const mesActual = new Date().toISOString().slice(0, 7);
+    setMesSeleccionado(mesActual);
+    cargarReporte(mesActual);
+
+    getMesesDisponibles().then((result) => {
+      if (result.success) {
+        setMeses(result.data || []);
+      }
+    });
   }, []);
 
-  if (loading) {
+  const cambiarMes = (mes: string) => {
+    setMesSeleccionado(mes);
+    cargarReporte(mes);
+  };
+
+  if (loading && !data) {
     return (
       <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
         <Loader2 className="animate-spin" size={20} />
@@ -45,9 +73,29 @@ export default function ReportesPage() {
 
   return (
     <div className="px-10 py-9">
-      <div className="mb-10">
-        <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Análisis</p>
-        <h1 className="font-display text-3xl text-[#201c17]">Reporte General</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-10">
+        <div>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Análisis</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Reporte General</h1>
+          <p className="text-xs text-[#8a8175] mt-2">
+            {data.mes ? `Mostrando ${formatMesLargo(data.mes)}` : 'Mostrando el acumulado de todos los meses'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <CalendarClock size={16} className="text-[#8a8175]" strokeWidth={1.6} />
+          <select
+            value={mesSeleccionado}
+            onChange={(e) => cambiarMes(e.target.value)}
+            disabled={loading}
+            className="px-4 py-2.5 border border-brand-line focus:outline-none focus:border-brand-accent text-sm bg-white transition-colors"
+          >
+            <option value="todos">Todo el historial</option>
+            {meses.map((mes) => (
+              <option key={mes} value={mes}>{formatMesLargo(mes)}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* KPIs principales */}
@@ -74,7 +122,7 @@ export default function ReportesPage() {
         </div>
         <div className="p-6 bg-white">
           <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-            <Package size={14} strokeWidth={1.6} /> Bloques en Stock
+            <Package size={14} strokeWidth={1.6} /> Bloques en Stock (hoy)
           </div>
           <p className="font-display text-2xl text-[#201c17]">{data.totalBloquesStock.toLocaleString()} und</p>
         </div>
@@ -86,7 +134,7 @@ export default function ReportesPage() {
         </div>
         <div className="p-6 bg-white">
           <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-            <ShoppingCart size={14} strokeWidth={1.6} /> Pedidos Pendientes
+            <ShoppingCart size={14} strokeWidth={1.6} /> Pedidos Pendientes (hoy)
           </div>
           <p className="font-display text-2xl text-brand-accent">{data.totalPedidosPendientes}</p>
         </div>

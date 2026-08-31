@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Search, X, AlertCircle, Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { getGastos, crearGastoAction, eliminarGastoAction } from '../../actions';
 
 const CATEGORIAS = ['Materia Prima', 'Mano de Obra', 'Transporte', 'Servicios', 'Otro'];
@@ -108,6 +109,10 @@ export default function GastosPage() {
 
   const totalGastos = gastosFiltrados.reduce((sum, g) => sum + Number(g.monto), 0);
 
+  const mesActualLabel = new Date()
+    .toLocaleDateString('es-HN', { month: 'long', year: 'numeric' })
+    .replace(/^\w/, (c) => c.toUpperCase());
+
   return (
     <div className="px-10 py-9">
       {/* Header */}
@@ -115,10 +120,17 @@ export default function GastosPage() {
         <div>
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Operativo</p>
           <h1 className="font-display text-3xl text-[#201c17]">Gastos</h1>
+          <p className="text-xs text-[#8a8175] mt-2">
+            Mostrando {mesActualLabel}. Los meses anteriores quedan guardados y puedes verlos en{' '}
+            <Link href="/dashboard/reportes" className="text-brand-accent hover:underline">
+              Reportes
+            </Link>
+            .
+          </p>
         </div>
         <div className="flex items-center gap-5">
           <div className="text-right">
-            <p className="text-[10px] text-[#8a8175] uppercase tracking-wide">Total filtrado</p>
+            <p className="text-[10px] text-[#8a8175] uppercase tracking-wide">Total del mes</p>
             <p className="font-display text-xl text-[#201c17]">L. {totalGastos.toLocaleString()}</p>
           </div>
           <button

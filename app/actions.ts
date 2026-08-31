@@ -85,6 +85,7 @@ export type ReporteGeneral = {
   ventasPorMes: { mes: string; total: number }[];
   gastosPorCategoria: { categoria: string; total: number }[];
   topClientes: { cliente: string; total: number }[];
+  mes: string | null;
 };
 
 // ============================================================
@@ -129,14 +130,27 @@ export async function getDashboardResumen(): Promise<ServerResult<DashboardResum
   let facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[] = [];
 
   try {
-    const ventasResult = await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
+    // Solo ventas del mes en curso: el mes anterior ya no se suma aquí,
+    // pero sigue intacto en historial_facturas y disponible en Reportes.
+    const ventasResult = await sql`
+      SELECT COALESCE(SUM(total_venta), 0) as total
+      FROM historial_facturas
+      WHERE fecha_despacho::date >= date_trunc('month', CURRENT_DATE)
+        AND fecha_despacho::date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+    `;
     totalVentas = Number((ventasResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error ventas:', e);
   }
 
   try {
-    const gastosResult = await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
+    // Igual que ventas: solo gastos del mes en curso, el resto queda guardado.
+    const gastosResult = await sql`
+      SELECT COALESCE(SUM(monto), 0) as total
+      FROM gastos
+      WHERE fecha::date >= date_trunc('month', CURRENT_DATE)
+        AND fecha::date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+    `;
     totalGastos = Number((gastosResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error gastos:', e);
@@ -334,9 +348,22 @@ export async function despacharPedidoAction(
 // ============================================================
 // GASTOS
 // ============================================================
-export async function getGastos(): Promise<ServerResult<Gasto[]>> {
+export async function getGastos(mes?: string): Promise<ServerResult<Gasto[]>> {
   try {
-    const data = await sql`SELECT * FROM gastos ORDER BY id DESC`;
+    // Sin "mes" -> solo el mes en curso (comportamiento por defecto de la pantalla de Gastos).
+    // Con "mes" ('YYYY-MM') -> ese mes puntual, usado desde el historial de Reportes.
+    const data = mes
+      ? await sql`
+          SELECT * FROM gastos
+          WHERE TO_CHAR(fecha::date, 'YYYY-MM') = ${mes}
+          ORDER BY fecha DESC, id DESC
+        `
+      : await sql`
+          SELECT * FROM gastos
+          WHERE fecha::date >= date_trunc('month', CURRENT_DATE)
+            AND fecha::date < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+          ORDER BY fecha DESC, id DESC
+        `;
     return { success: true, data: data as unknown as Gasto[] };
   } catch (error) {
     console.error(error);
@@ -601,7 +628,34 @@ export async function actualizarEstadoFactura(
 // ============================================================
 // REPORTES
 // ============================================================
-export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>> {
+// Meses (YYYY-MM) que tienen datos guardados en ventas y/o gastos,
+// para poblar el selector de historial mensual en Reportes.
+export async function getMesesDisponibles(): Promise<ServerResult<string[]>> {
+  try {
+    const data = await sql`
+      SELECT mes FROM (
+        SELECT DISTINCT TO_CHAR(fecha::date, 'YYYY-MM') as mes FROM gastos
+        UNION
+        SELECT DISTINCT TO_CHAR(fecha_despacho::date, 'YYYY-MM') as mes FROM historial_facturas
+      ) t
+      ORDER BY mes DESC
+    `;
+    const meses = (data as unknown as { mes: string }[]).map((d) => d.mes).filter(Boolean);
+
+    // El mes en curso siempre debe poder seleccionarse, aunque todavía no tenga movimientos.
+    const mesActual = new Date().toISOString().slice(0, 7);
+    if (!meses.includes(mesActual)) {
+      meses.unshift(mesActual);
+    }
+
+    return { success: true, data: meses };
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: 'Error al cargar los meses disponibles' };
+  }
+}
+
+export async function getReporteGeneral(mes?: string): Promise<ServerResult<ReporteGeneral>> {
   let totalVentas = 0;
   let totalGastos = 0;
   let totalBloquesStock = 0;
@@ -611,15 +665,31 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
   let gastosPorCategoria: { categoria: string; total: number }[] = [];
   let topClientes: { cliente: string; total: number }[] = [];
 
+  // Si viene "mes" (formato 'YYYY-MM') el reporte queda acotado a ese mes puntual;
+  // sin "mes" se mantiene el acumulado histórico (comportamiento anterior).
+  const filtrarPorMes = Boolean(mes);
+
   try {
-    const ventas = await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
+    const ventas = filtrarPorMes
+      ? await sql`
+          SELECT COALESCE(SUM(total_venta), 0) as total
+          FROM historial_facturas
+          WHERE TO_CHAR(fecha_despacho::date, 'YYYY-MM') = ${mes}
+        `
+      : await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
     totalVentas = Number((ventas[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error ventas reporte:', e);
   }
 
   try {
-    const gastos = await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
+    const gastos = filtrarPorMes
+      ? await sql`
+          SELECT COALESCE(SUM(monto), 0) as total
+          FROM gastos
+          WHERE TO_CHAR(fecha::date, 'YYYY-MM') = ${mes}
+        `
+      : await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
     totalGastos = Number((gastos[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error gastos reporte:', e);
@@ -637,7 +707,12 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
   }
 
   try {
-    const facturas = await sql`SELECT COUNT(*) as total FROM historial_facturas`;
+    const facturas = filtrarPorMes
+      ? await sql`
+          SELECT COUNT(*) as total FROM historial_facturas
+          WHERE TO_CHAR(fecha_despacho::date, 'YYYY-MM') = ${mes}
+        `
+      : await sql`SELECT COUNT(*) as total FROM historial_facturas`;
     totalFacturas = Number((facturas[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error facturas reporte:', e);
@@ -666,24 +741,41 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
   }
 
   try {
-    gastosPorCategoria = await sql`
-      SELECT categoria, COALESCE(SUM(monto), 0) as total
-      FROM gastos
-      GROUP BY categoria
-      ORDER BY total DESC
-    ` as unknown as { categoria: string; total: number }[];
+    gastosPorCategoria = filtrarPorMes
+      ? await sql`
+          SELECT categoria, COALESCE(SUM(monto), 0) as total
+          FROM gastos
+          WHERE TO_CHAR(fecha::date, 'YYYY-MM') = ${mes}
+          GROUP BY categoria
+          ORDER BY total DESC
+        ` as unknown as { categoria: string; total: number }[]
+      : await sql`
+          SELECT categoria, COALESCE(SUM(monto), 0) as total
+          FROM gastos
+          GROUP BY categoria
+          ORDER BY total DESC
+        ` as unknown as { categoria: string; total: number }[];
   } catch (e) {
     console.log('Error gastos categoria reporte:', e);
   }
 
   try {
-    topClientes = await sql`
-      SELECT cliente, COALESCE(SUM(total_venta), 0) as total
-      FROM historial_facturas
-      GROUP BY cliente
-      ORDER BY total DESC
-      LIMIT 5
-    ` as unknown as { cliente: string; total: number }[];
+    topClientes = filtrarPorMes
+      ? await sql`
+          SELECT cliente, COALESCE(SUM(total_venta), 0) as total
+          FROM historial_facturas
+          WHERE TO_CHAR(fecha_despacho::date, 'YYYY-MM') = ${mes}
+          GROUP BY cliente
+          ORDER BY total DESC
+          LIMIT 5
+        ` as unknown as { cliente: string; total: number }[]
+      : await sql`
+          SELECT cliente, COALESCE(SUM(total_venta), 0) as total
+          FROM historial_facturas
+          GROUP BY cliente
+          ORDER BY total DESC
+          LIMIT 5
+        ` as unknown as { cliente: string; total: number }[];
   } catch (e) {
     console.log('Error top clientes reporte:', e);
   }
@@ -700,6 +792,7 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
       ventasPorMes: ventasPorMes || [],
       gastosPorCategoria: gastosPorCategoria || [],
       topClientes: topClientes || [],
+      mes: mes || null,
     },
   };
 }
