@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Plus, Trash2, Search, X, AlertCircle, Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { getGastos, crearGastoAction, eliminarGastoAction } from '../../actions';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 
 const CATEGORIAS = ['Materia Prima', 'Mano de Obra', 'Transporte', 'Servicios', 'Otro'];
 
@@ -12,6 +14,9 @@ export default function GastosPage() {
   const [gastosFiltrados, setGastosFiltrados] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
   const [showModal, setShowModal] = useState(false);
   const [showEliminarModal, setShowEliminarModal] = useState(false);
   const [gastoAEliminar, setGastoAEliminar] = useState<any>(null);
@@ -19,7 +24,7 @@ export default function GastosPage() {
 
   const cargarGastos = async () => {
     setLoading(true);
-    const result = await getGastos();
+    const result = await getGastos(fechaDesde, fechaHasta);
     if (result.success) {
       setGastos(result.data || []);
       setGastosFiltrados(result.data || []);
@@ -31,7 +36,7 @@ export default function GastosPage() {
 
   useEffect(() => {
     cargarGastos();
-  }, []);
+  }, [fechaDesde, fechaHasta]);
 
   useEffect(() => {
     let filtrados = gastos;
@@ -132,7 +137,7 @@ export default function GastosPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
           <input
@@ -153,6 +158,12 @@ export default function GastosPage() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
       </div>
 
       {/* Tabla */}

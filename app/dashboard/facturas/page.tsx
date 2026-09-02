@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Download, Search, Filter, X, ChevronLeft, ChevronRight, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getFacturas, getFacturasFiltradas, actualizarEstadoFactura } from '../../actions';
+import { getFacturasFiltradas, actualizarEstadoFactura } from '../../actions';
 import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 
 export default function FacturasPage() {
   const [facturas, setFacturas] = useState<any[]>([]);
@@ -13,16 +15,19 @@ export default function FacturasPage() {
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
-  const [fechaDesde, setFechaDesde] = useState('');
-  const [fechaHasta, setFechaHasta] = useState('');
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const [paginaActual, setPaginaActual] = useState(1);
   const itemsPorPagina = 10;
 
-  const cargarFacturas = async () => {
+  const buscarFacturas = async (filtros: { cliente?: string; estado?: string; fechaDesde?: string; fechaHasta?: string }) => {
     setLoading(true);
-    const result = await getFacturas();
+    setPaginaActual(1);
+
+    const result = await getFacturasFiltradas(filtros);
     if (result.success) {
       setFacturas(result.data || []);
       setFacturasFiltradas(result.data || []);
@@ -32,51 +37,25 @@ export default function FacturasPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    cargarFacturas();
-  }, []);
-
-  const aplicarFiltros = async () => {
-    setLoading(true);
-    setPaginaActual(1);
-
-    const filtros: any = {};
-    if (busqueda.trim()) filtros.cliente = busqueda.trim();
-    if (filtroEstado) filtros.estado = filtroEstado;
-    if (fechaDesde) filtros.fechaDesde = fechaDesde;
-    if (fechaHasta) filtros.fechaHasta = fechaHasta;
-
-    if (Object.keys(filtros).length === 0 && !busqueda.trim()) {
-      setFacturasFiltradas(facturas);
-      setLoading(false);
-      return;
-    }
-
-    if (filtros.fechaDesde || filtros.fechaHasta || filtros.estado) {
-      const result = await getFacturasFiltradas(filtros);
-      if (result.success) {
-        setFacturasFiltradas(result.data || []);
-      }
-    } else {
-      const filtro = busqueda.toLowerCase();
-      setFacturasFiltradas(
-        facturas.filter(f =>
-          f.cliente?.toLowerCase().includes(filtro) ||
-          String(f.num_factura).includes(filtro) ||
-          f.producto?.toLowerCase().includes(filtro)
-        )
-      );
-    }
-    setLoading(false);
+  const aplicarFiltros = () => {
+    buscarFacturas({
+      cliente: busqueda.trim() || undefined,
+      estado: filtroEstado || undefined,
+      fechaDesde: fechaDesde || undefined,
+      fechaHasta: fechaHasta || undefined,
+    });
   };
+
+  useEffect(() => {
+    aplicarFiltros();
+  }, [fechaDesde, fechaHasta]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setFiltroEstado('');
-    setFechaDesde('');
-    setFechaHasta('');
-    setFacturasFiltradas(facturas);
-    setPaginaActual(1);
+    setFechaDesde(desdeInicial);
+    setFechaHasta(hastaInicial);
+    buscarFacturas({ fechaDesde: desdeInicial, fechaHasta: hastaInicial });
   };
 
   const descargarPDF = (factura: any) => {
@@ -88,7 +67,7 @@ export default function FacturasPage() {
     const result = await actualizarEstadoFactura(numFactura, nuevoEstado);
     if (result.success) {
       toast.success('Estado actualizado');
-      cargarFacturas();
+      aplicarFiltros();
     } else {
       toast.error(result.message);
     }
@@ -121,8 +100,8 @@ export default function FacturasPage() {
         </div>
       </div>
 
-      {/* Barra de búsqueda y filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {/* Barra de búsqueda, rango de fechas y filtros */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
           <input
@@ -134,6 +113,12 @@ export default function FacturasPage() {
             className="w-full pl-6 pr-4 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-sm transition-colors"
           />
         </div>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
         <button
           onClick={() => setMostrarFiltros(!mostrarFiltros)}
           className={`flex items-center gap-2 px-5 py-2.5 text-sm transition-colors border ${
@@ -167,24 +152,6 @@ export default function FacturasPage() {
                 <option value="Con Anticipo">Con Anticipo</option>
                 <option value="Pendiente">Pendiente</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Desde</label>
-              <input
-                type="date"
-                value={fechaDesde}
-                onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-sm focus:outline-none focus:border-brand-accent"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Hasta</label>
-              <input
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-sm focus:outline-none focus:border-brand-accent"
-              />
             </div>
           </div>
           <div className="flex justify-end mt-4">
@@ -247,6 +214,9 @@ export default function FacturasPage() {
                     <td className="px-5 py-4 text-[#4a463e] text-sm">{f.producto}</td>
                     <td className="px-5 py-4 text-right font-medium text-[#201c17]">
                       L. {Number(f.total_venta).toFixed(2)}
+                      {Number(f.descuento_monto) > 0 && (
+                        <p className="text-[11px] font-normal text-brand-accent mt-0.5">−L. {Number(f.descuento_monto).toFixed(2)} desc.</p>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-right">
                       {Number(f.saldo_pendiente) > 0 ? (
