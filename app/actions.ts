@@ -1,6 +1,7 @@
 'use server';
 
 import { sql } from '../lib/db';
+import { calcularDescuento, type DescuentoTipo } from '../lib/descuento';
 
 // ============================================================
 // TIPO UNIFICADO - Funciona sin narrowing complejo
@@ -23,6 +24,8 @@ export type Pedido = {
   estado: string;
   estado_pago: string;
   anticipo: number;
+  descuento_tipo: DescuentoTipo;
+  descuento_valor: number;
 };
 
 export type Factura = {
@@ -31,6 +34,10 @@ export type Factura = {
   cliente: string;
   producto: string;
   cantidad: number;
+  subtotal: number;
+  descuento_tipo: DescuentoTipo;
+  descuento_valor: number;
+  descuento_monto: number;
   total_venta: number;
   estado: string;
   anticipo: number;
@@ -119,7 +126,10 @@ export async function loginAction(
 // ============================================================
 // DASHBOARD
 // ============================================================
-export async function getDashboardResumen(): Promise<ServerResult<DashboardResumen>> {
+export async function getDashboardResumen(
+  fechaDesde?: string,
+  fechaHasta?: string
+): Promise<ServerResult<DashboardResumen>> {
   let totalVentas = 0;
   let totalGastos = 0;
   let totalPorCobrar = 0;
@@ -129,20 +139,34 @@ export async function getDashboardResumen(): Promise<ServerResult<DashboardResum
   let facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[] = [];
 
   try {
-    const ventasResult = await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
+    const ventasResult = await sql`
+      SELECT COALESCE(SUM(total_venta), 0) as total
+      FROM historial_facturas
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
+    `;
     totalVentas = Number((ventasResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error ventas:', e);
   }
 
   try {
-    const gastosResult = await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
+    const gastosResult = await sql`
+      SELECT COALESCE(SUM(monto), 0) as total
+      FROM gastos
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
     totalGastos = Number((gastosResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error gastos:', e);
   }
 
   try {
+    // "Por cobrar" es el saldo pendiente ACTUAL (no se acota por periodo):
+    // representa deuda vigente, sin importar cuándo se generó la factura.
     const cobrarResult = await sql`SELECT COALESCE(SUM(saldo_pendiente), 0) as total FROM historial_facturas`;
     totalPorCobrar = Number((cobrarResult[0] as any)?.total || 0);
   } catch (e) {
@@ -153,6 +177,9 @@ export async function getDashboardResumen(): Promise<ServerResult<DashboardResum
     pedidosRecientes = await sql`
       SELECT id, fecha, cliente, producto, cantidad, precio_unitario, estado, estado_pago, anticipo
       FROM pedidos
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
       ORDER BY id DESC
       LIMIT 5
     ` as unknown as Pedido[];
@@ -234,12 +261,18 @@ export async function crearPedidoAction(pedido: {
   estado: string;
   estado_pago: string;
   anticipo: number;
+  descuento_tipo?: DescuentoTipo;
+  descuento_valor?: number;
 }): Promise<ServerResult> {
   try {
+    const descuentoTipo = pedido.descuento_tipo || 'ninguno';
+    const descuentoValor = pedido.descuento_valor || 0;
+
     await sql`
-      INSERT INTO pedidos (fecha, cliente, producto, cantidad, precio_unitario, estado, estado_pago, anticipo)
+      INSERT INTO pedidos (fecha, cliente, producto, cantidad, precio_unitario, estado, estado_pago, anticipo, descuento_tipo, descuento_valor)
       VALUES (${pedido.fecha}, ${pedido.cliente}, ${pedido.producto},
-              ${pedido.cantidad}, ${pedido.precio_unitario}, ${pedido.estado}, ${pedido.estado_pago}, ${pedido.anticipo})
+              ${pedido.cantidad}, ${pedido.precio_unitario}, ${pedido.estado}, ${pedido.estado_pago}, ${pedido.anticipo},
+              ${descuentoTipo}, ${descuentoValor})
     `;
     return { success: true };
   } catch (error) {
@@ -266,6 +299,8 @@ export async function despacharPedidoAction(
     rtn?: string;
     direccion?: string;
     estado_pago?: string;
+    descuento_tipo?: DescuentoTipo;
+    descuento_valor?: number;
   }
 ): Promise<ServerResult> {
   try {
@@ -275,21 +310,32 @@ export async function despacharPedidoAction(
     }
 
     const pedido = pedidos[0] as any;
-    const total = Number(pedido.cantidad) * Number(pedido.precio_unitario);
+    const subtotal = Number(pedido.cantidad) * Number(pedido.precio_unitario);
     const anticipo = Number(pedido.anticipo) || 0;
+
+    // El descuento se puede reconfirmar/ajustar al momento del despacho;
+    // si no se manda nada, se respeta el que traía el pedido.
+    const descuentoTipo: DescuentoTipo = datosFactura?.descuento_tipo || pedido.descuento_tipo || 'ninguno';
+    const descuentoValor = datosFactura?.descuento_valor ?? Number(pedido.descuento_valor) ?? 0;
+    const descuentoMonto = calcularDescuento(subtotal, Number(pedido.cantidad), descuentoTipo, descuentoValor);
+    const total = subtotal - descuentoMonto;
 
     const estadoPago = 'Pagado';
     const saldoPendiente = 0;
 
     await sql`
       INSERT INTO historial_facturas
-        (fecha_despacho, cliente, producto, cantidad, total_venta, estado, anticipo, saldo_pendiente,
-         identidad, rtn, direccion)
+        (fecha_despacho, cliente, producto, cantidad, subtotal, descuento_tipo, descuento_valor, descuento_monto,
+         total_venta, estado, anticipo, saldo_pendiente, identidad, rtn, direccion)
       VALUES (
         ${datosFactura?.fecha_despacho || new Date().toISOString().split('T')[0]},
         ${pedido.cliente},
         ${pedido.producto},
         ${pedido.cantidad},
+        ${subtotal},
+        ${descuentoTipo},
+        ${descuentoValor},
+        ${descuentoMonto},
         ${total},
         ${estadoPago},
         ${anticipo},
@@ -334,9 +380,15 @@ export async function despacharPedidoAction(
 // ============================================================
 // GASTOS
 // ============================================================
-export async function getGastos(): Promise<ServerResult<Gasto[]>> {
+export async function getGastos(fechaDesde?: string, fechaHasta?: string): Promise<ServerResult<Gasto[]>> {
   try {
-    const data = await sql`SELECT * FROM gastos ORDER BY id DESC`;
+    const data = await sql`
+      SELECT * FROM gastos
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+      ORDER BY id DESC
+    `;
     return { success: true, data: data as unknown as Gasto[] };
   } catch (error) {
     console.error(error);
@@ -389,12 +441,18 @@ export async function getInventario(): Promise<ServerResult<InventarioData>> {
   }
 }
 
-export async function getHistorialInventario(): Promise<ServerResult<HistorialItem[]>> {
+export async function getHistorialInventario(
+  fechaDesde?: string,
+  fechaHasta?: string
+): Promise<ServerResult<HistorialItem[]>> {
   try {
     const data = await sql`
       SELECT * FROM historial_inventario
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}::date + INTERVAL '1 day'` : sql``}
       ORDER BY fecha DESC, id DESC
-      LIMIT 50
+      LIMIT 200
     `;
     return { success: true, data: data as unknown as HistorialItem[] };
   } catch (error) {
@@ -530,6 +588,7 @@ export async function getFacturas(): Promise<ServerResult<Factura[]>> {
     const data = await sql`
       SELECT
         num_factura, fecha_despacho, cliente, producto, cantidad,
+        subtotal, descuento_tipo, descuento_valor, descuento_monto,
         total_venta, estado, anticipo, saldo_pendiente,
         identidad, rtn, direccion
       FROM historial_facturas
@@ -552,6 +611,7 @@ export async function getFacturasFiltradas(filtros: {
     let query = sql`
       SELECT
         num_factura, fecha_despacho, cliente, producto, cantidad,
+        subtotal, descuento_tipo, descuento_valor, descuento_monto,
         total_venta, estado, anticipo, saldo_pendiente,
         identidad, rtn, direccion
       FROM historial_facturas
@@ -601,7 +661,10 @@ export async function actualizarEstadoFactura(
 // ============================================================
 // REPORTES
 // ============================================================
-export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>> {
+export async function getReporteGeneral(
+  fechaDesde?: string,
+  fechaHasta?: string
+): Promise<ServerResult<ReporteGeneral>> {
   let totalVentas = 0;
   let totalGastos = 0;
   let totalBloquesStock = 0;
@@ -612,14 +675,26 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
   let topClientes: { cliente: string; total: number }[] = [];
 
   try {
-    const ventas = await sql`SELECT COALESCE(SUM(total_venta), 0) as total FROM historial_facturas`;
+    const ventas = await sql`
+      SELECT COALESCE(SUM(total_venta), 0) as total
+      FROM historial_facturas
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
+    `;
     totalVentas = Number((ventas[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error ventas reporte:', e);
   }
 
   try {
-    const gastos = await sql`SELECT COALESCE(SUM(monto), 0) as total FROM gastos`;
+    const gastos = await sql`
+      SELECT COALESCE(SUM(monto), 0) as total
+      FROM gastos
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
     totalGastos = Number((gastos[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error gastos reporte:', e);
@@ -637,7 +712,13 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
   }
 
   try {
-    const facturas = await sql`SELECT COUNT(*) as total FROM historial_facturas`;
+    const facturas = await sql`
+      SELECT COUNT(*) as total
+      FROM historial_facturas
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
+    `;
     totalFacturas = Number((facturas[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error facturas reporte:', e);
@@ -651,13 +732,14 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
   }
 
   try {
-    const fechaDesde = '2026-02-19';
     ventasPorMes = await sql`
       SELECT
         SUBSTRING(fecha_despacho::text, 1, 7) as mes,
         COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
-      WHERE fecha_despacho >= ${fechaDesde}
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
       GROUP BY SUBSTRING(fecha_despacho::text, 1, 7)
       ORDER BY mes ASC
     ` as unknown as { mes: string; total: number }[];
@@ -669,6 +751,9 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
     gastosPorCategoria = await sql`
       SELECT categoria, COALESCE(SUM(monto), 0) as total
       FROM gastos
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
       GROUP BY categoria
       ORDER BY total DESC
     ` as unknown as { categoria: string; total: number }[];
@@ -680,6 +765,9 @@ export async function getReporteGeneral(): Promise<ServerResult<ReporteGeneral>>
     topClientes = await sql`
       SELECT cliente, COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
       GROUP BY cliente
       ORDER BY total DESC
       LIMIT 5

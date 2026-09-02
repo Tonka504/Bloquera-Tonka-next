@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Truck, Trash2, Search, X, CheckCircle, Loader2, ShoppingCart } from 'lucide-react';
+import { Plus, Truck, Trash2, Printer, Search, X, CheckCircle, Loader2, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { getPedidos, crearPedidoAction, eliminarPedidoAction, despacharPedidoAction } from '../../actions';
+import { calcularDescuento, labelDescuento, UMBRAL_DESCUENTO_AUTOMATICO, type DescuentoTipo } from '../../../lib/descuento';
+import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
 
 export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<any[]>([]);
   const [pedidosFiltrados, setPedidosFiltrados] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState('');
+  const [orden, setOrden] = useState<'reciente' | 'antiguo'>('reciente');
   const [showModal, setShowModal] = useState(false);
   const [showDespachoModal, setShowDespachoModal] = useState(false);
   const [showEliminarModal, setShowEliminarModal] = useState(false);
@@ -16,6 +19,41 @@ export default function PedidosPage() {
   const [pedidoAEliminar, setPedidoAEliminar] = useState<any>(null);
   const [estadoPago, setEstadoPago] = useState("Pendiente");
   const [loading, setLoading] = useState(true);
+
+  // Nuevo Pedido: cantidad/precio/descuento controlados para previsualizar el total
+  const [npCantidad, setNpCantidad] = useState(100);
+  const [npPrecio, setNpPrecio] = useState(25);
+  const [npDescuentoTipo, setNpDescuentoTipo] = useState<DescuentoTipo>('ninguno');
+  const [npDescuentoValor, setNpDescuentoValor] = useState(0);
+  // Mientras el usuario no toque el selector de descuento a mano, se sugiere
+  // el automático apenas la cantidad supera el umbral (y se retira si baja).
+  const [npDescuentoTocado, setNpDescuentoTocado] = useState(false);
+  const npSubtotal = npCantidad * npPrecio;
+  const npDescuentoMonto = calcularDescuento(npSubtotal, npCantidad, npDescuentoTipo, npDescuentoValor);
+  const npTotal = npSubtotal - npDescuentoMonto;
+
+  useEffect(() => {
+    if (npDescuentoTocado) return;
+    setNpDescuentoTipo(npCantidad > UMBRAL_DESCUENTO_AUTOMATICO ? 'automatico' : 'ninguno');
+  }, [npCantidad, npDescuentoTocado]);
+
+  const resetNuevoPedido = () => {
+    setNpCantidad(100);
+    setNpPrecio(25);
+    setNpDescuentoTipo('ninguno');
+    setNpDescuentoValor(0);
+    setNpDescuentoTocado(false);
+    setEstadoPago('Pendiente');
+  };
+
+  // Despacho: descuento controlado, precargado del pedido pero ajustable
+  const [despDescuentoTipo, setDespDescuentoTipo] = useState<DescuentoTipo>('ninguno');
+  const [despDescuentoValor, setDespDescuentoValor] = useState(0);
+  const despSubtotal = pedidoADespachar ? pedidoADespachar.cantidad * pedidoADespachar.precio_unitario : 0;
+  const despDescuentoMonto = pedidoADespachar
+    ? calcularDescuento(despSubtotal, pedidoADespachar.cantidad, despDescuentoTipo, despDescuentoValor)
+    : 0;
+  const despTotal = despSubtotal - despDescuentoMonto;
 
   const cargarPedidos = async () => {
     setLoading(true);
@@ -32,19 +70,24 @@ export default function PedidosPage() {
   }, []);
 
   useEffect(() => {
-    if (!busqueda.trim()) {
-      setPedidosFiltrados(pedidos);
-      return;
-    }
-    const filtro = busqueda.toLowerCase();
-    setPedidosFiltrados(
-      pedidos.filter(p =>
+    let lista = pedidos;
+
+    if (busqueda.trim()) {
+      const filtro = busqueda.toLowerCase();
+      lista = lista.filter(p =>
         p.cliente?.toLowerCase().includes(filtro) ||
         p.producto?.toLowerCase().includes(filtro) ||
         String(p.id).includes(filtro)
-      )
-    );
-  }, [busqueda, pedidos]);
+      );
+    }
+
+    lista = [...lista].sort((a, b) => {
+      const diff = new Date(a.fecha).getTime() - new Date(b.fecha).getTime() || a.id - b.id;
+      return orden === 'reciente' ? -diff : diff;
+    });
+
+    setPedidosFiltrados(lista);
+  }, [busqueda, orden, pedidos]);
 
   const crearPedido = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -52,14 +95,12 @@ export default function PedidosPage() {
 
     const estadoPagoSeleccionado = (form.elements.namedItem('estado_pago') as HTMLSelectElement).value;
     const anticipoInput = form.elements.namedItem('anticipo') as HTMLInputElement;
-    const cantidad = parseInt((form.elements.namedItem('cantidad') as HTMLInputElement).value);
-    const precio = parseFloat((form.elements.namedItem('precio') as HTMLInputElement).value);
 
-    if (cantidad <= 0) {
+    if (npCantidad <= 0) {
       toast.error('La cantidad debe ser mayor a 0');
       return;
     }
-    if (precio <= 0) {
+    if (npPrecio <= 0) {
       toast.error('El precio debe ser mayor a 0');
       return;
     }
@@ -71,8 +112,8 @@ export default function PedidosPage() {
         toast.error('El anticipo debe ser mayor a 0');
         return;
       }
-      if (anticipo > cantidad * precio) {
-        toast.error('El anticipo no puede ser mayor al total');
+      if (anticipo > npTotal) {
+        toast.error('El anticipo no puede ser mayor al total (con descuento aplicado)');
         return;
       }
     }
@@ -81,11 +122,13 @@ export default function PedidosPage() {
       fecha: new Date().toISOString().split('T')[0],
       cliente: (form.elements.namedItem('cliente') as HTMLInputElement).value.trim(),
       producto: (form.elements.namedItem('producto') as HTMLSelectElement).value,
-      cantidad,
-      precio_unitario: precio,
+      cantidad: npCantidad,
+      precio_unitario: npPrecio,
       estado: 'Pendiente',
       estado_pago: estadoPagoSeleccionado,
-      anticipo
+      anticipo,
+      descuento_tipo: npDescuentoTipo,
+      descuento_valor: npDescuentoValor,
     };
 
     const result = await crearPedidoAction(nuevoPedido);
@@ -93,7 +136,7 @@ export default function PedidosPage() {
     if (result.success) {
       toast.success('Pedido creado correctamente');
       setShowModal(false);
-      setEstadoPago("Pendiente");
+      resetNuevoPedido();
       cargarPedidos();
       form.reset();
     } else {
@@ -103,6 +146,13 @@ export default function PedidosPage() {
 
   const abrirModalDespacho = (pedido: any) => {
     setPedidoADespachar(pedido);
+    const tipoGuardado: DescuentoTipo = pedido.descuento_tipo || 'ninguno';
+    // Si el pedido no traía descuento pero ya supera las 500 unidades
+    // (p. ej. quedó así antes de esta función), se sugiere el automático.
+    const tipoSugerido: DescuentoTipo =
+      tipoGuardado === 'ninguno' && pedido.cantidad > UMBRAL_DESCUENTO_AUTOMATICO ? 'automatico' : tipoGuardado;
+    setDespDescuentoTipo(tipoSugerido);
+    setDespDescuentoValor(Number(pedido.descuento_valor) || 0);
     setShowDespachoModal(true);
   };
 
@@ -116,6 +166,8 @@ export default function PedidosPage() {
       identidad: (form.elements.namedItem('identidad') as HTMLInputElement).value.trim(),
       rtn: (form.elements.namedItem('rtn') as HTMLInputElement).value.trim(),
       direccion: (form.elements.namedItem('direccion') as HTMLInputElement).value.trim() || 'SANTA BARBARA, S.B., HONDURAS',
+      descuento_tipo: despDescuentoTipo,
+      descuento_valor: despDescuentoValor,
     };
 
     const result = await despacharPedidoAction(pedidoADespachar.id, datosFactura);
@@ -128,6 +180,29 @@ export default function PedidosPage() {
     } else {
       toast.error(result.message);
     }
+  };
+
+  const imprimirPedido = (pedido: any) => {
+    const subtotalPedido = pedido.cantidad * pedido.precio_unitario;
+    const descuentoTipoPedido: DescuentoTipo = pedido.descuento_tipo || 'ninguno';
+    const descuentoValorPedido = Number(pedido.descuento_valor) || 0;
+    const descuentoMontoPedido = calcularDescuento(subtotalPedido, pedido.cantidad, descuentoTipoPedido, descuentoValorPedido);
+
+    generateInvoicePDF({
+      id: pedido.id,
+      fecha: pedido.fecha,
+      cliente: pedido.cliente,
+      producto: pedido.producto,
+      cantidad: pedido.cantidad,
+      precio_unitario: pedido.precio_unitario,
+      subtotal: subtotalPedido,
+      descuento_tipo: descuentoTipoPedido,
+      descuento_valor: descuentoValorPedido,
+      descuento_monto: descuentoMontoPedido,
+      total_venta: subtotalPedido - descuentoMontoPedido,
+      anticipo: pedido.anticipo,
+    });
+    toast.success(`Cotización del pedido #${pedido.id} descargada`);
   };
 
   const abrirModalEliminar = (pedido: any) => {
@@ -174,16 +249,29 @@ export default function PedidosPage() {
         </button>
       </div>
 
-      {/* Búsqueda */}
-      <div className="relative mb-8 max-w-md">
-        <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
-        <input
-          type="text"
-          placeholder="Buscar por cliente, producto o ID..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full pl-6 pr-4 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-sm transition-colors"
-        />
+      {/* Búsqueda y orden */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
+          <input
+            type="text"
+            placeholder="Buscar por cliente, producto o ID..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="w-full pl-6 pr-4 py-2.5 border-0 border-b border-brand-line bg-transparent focus:outline-none focus:border-brand-accent text-sm transition-colors"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em]">Orden</label>
+          <select
+            value={orden}
+            onChange={(e) => setOrden(e.target.value as 'reciente' | 'antiguo')}
+            className="px-4 py-2.5 border border-brand-line focus:outline-none focus:border-brand-accent text-sm bg-white transition-colors"
+          >
+            <option value="reciente">Más reciente primero</option>
+            <option value="antiguo">Más reciente al final</option>
+          </select>
+        </div>
       </div>
 
       {/* Tabla */}
@@ -220,7 +308,10 @@ export default function PedidosPage() {
                   </td>
                 </tr>
               ) : (
-                pedidosFiltrados.map((p: any) => (
+                pedidosFiltrados.map((p: any) => {
+                  const pSubtotal = p.cantidad * p.precio_unitario;
+                  const pDescuento = calcularDescuento(pSubtotal, p.cantidad, p.descuento_tipo || 'ninguno', Number(p.descuento_valor) || 0);
+                  return (
                   <tr key={p.id} className="hover:bg-[#faf8f4] transition-colors">
                     <td className="px-5 py-4 text-[#201c17]">#{p.id}</td>
                     <td className="px-5 py-4 text-[#201c17]">{p.cliente}</td>
@@ -228,7 +319,10 @@ export default function PedidosPage() {
                     <td className="px-5 py-4 text-right text-[#4a463e]">{p.cantidad.toLocaleString()}</td>
                     <td className="px-5 py-4 text-right text-[#4a463e]">L. {Number(p.precio_unitario).toFixed(2)}</td>
                     <td className="px-5 py-4 text-right font-medium text-[#201c17]">
-                      L. {(p.cantidad * p.precio_unitario).toFixed(2)}
+                      L. {(pSubtotal - pDescuento).toFixed(2)}
+                      {pDescuento > 0 && (
+                        <p className="text-[11px] font-normal text-brand-accent mt-0.5">−L. {pDescuento.toFixed(2)} desc.</p>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-center">
                       <span className="text-xs text-brand-accent uppercase tracking-wide">
@@ -250,6 +344,13 @@ export default function PedidosPage() {
                           <Truck size={16} strokeWidth={1.6} />
                         </button>
                         <button
+                          onClick={() => imprimirPedido(p)}
+                          className="p-1.5 text-[#8a8175] hover:text-brand-accent transition-colors"
+                          title="Imprimir cotización"
+                        >
+                          <Printer size={16} strokeWidth={1.6} />
+                        </button>
+                        <button
                           onClick={() => abrirModalEliminar(p)}
                           className="p-1.5 text-[#8a8175] hover:text-red-800 transition-colors"
                           title="Eliminar"
@@ -259,7 +360,8 @@ export default function PedidosPage() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -278,7 +380,7 @@ export default function PedidosPage() {
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
               <h3 className="font-display text-2xl text-[#201c17]">Nuevo Pedido</h3>
               <button
-                onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }}
+                onClick={() => { setShowModal(false); resetNuevoPedido(); }}
                 className="text-[#8a8175] hover:text-[#201c17] transition-colors"
               >
                 <X size={20} strokeWidth={1.6} />
@@ -315,7 +417,8 @@ export default function PedidosPage() {
                     name="cantidad"
                     type="number"
                     min="1"
-                    defaultValue="100"
+                    value={npCantidad}
+                    onChange={(e) => setNpCantidad(parseInt(e.target.value) || 0)}
                     className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                   />
                 </div>
@@ -326,10 +429,67 @@ export default function PedidosPage() {
                     type="number"
                     step="0.01"
                     min="0.01"
-                    defaultValue="25"
+                    value={npPrecio}
+                    onChange={(e) => setNpPrecio(parseFloat(e.target.value) || 0)}
                     className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
                   />
                 </div>
+              </div>
+
+              {/* Descuento */}
+              <div className="border-t border-brand-line pt-5">
+                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Descuento</label>
+                <select
+                  value={npDescuentoTipo}
+                  onChange={(e) => { setNpDescuentoTipo(e.target.value as DescuentoTipo); setNpDescuentoTocado(true); }}
+                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors bg-white"
+                >
+                  <option value="ninguno">Sin descuento</option>
+                  <option value="automatico">Automático — 10% si son más de {UMBRAL_DESCUENTO_AUTOMATICO} bloques</option>
+                  <option value="porcentaje">Manual — % sobre el subtotal</option>
+                  <option value="monto">Manual — monto fijo (L.)</option>
+                </select>
+
+                {npDescuentoTipo === 'automatico' && npCantidad <= UMBRAL_DESCUENTO_AUTOMATICO && (
+                  <p className="text-xs text-brand-accent mt-2">
+                    No se aplicará todavía: se necesitan más de {UMBRAL_DESCUENTO_AUTOMATICO} bloques.
+                  </p>
+                )}
+
+                {(npDescuentoTipo === 'porcentaje' || npDescuentoTipo === 'monto') && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                      {npDescuentoTipo === 'porcentaje' ? 'Porcentaje de descuento (%)' : 'Monto de descuento (L.)'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={npDescuentoTipo === 'porcentaje' ? 100 : undefined}
+                      value={npDescuentoValor}
+                      onChange={(e) => setNpDescuentoValor(parseFloat(e.target.value) || 0)}
+                      className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
+                      placeholder={npDescuentoTipo === 'porcentaje' ? 'Ej: 5' : 'Ej: 200'}
+                    />
+                  </div>
+                )}
+
+                {npDescuentoMonto > 0 && (
+                  <div className="mt-4 border border-brand-line divide-y divide-brand-line text-sm">
+                    <div className="flex justify-between px-4 py-2.5">
+                      <span className="text-[#8a8175]">Subtotal</span>
+                      <span className="text-[#201c17]">L. {npSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 py-2.5">
+                      <span className="text-brand-accent whitespace-nowrap">{labelDescuento(npDescuentoTipo, npDescuentoValor)}</span>
+                      <span className="text-brand-accent whitespace-nowrap">− L. {npDescuentoMonto.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-2.5 bg-[#faf8f4] font-medium">
+                      <span className="text-[#201c17]">Total</span>
+                      <span className="text-[#201c17]">L. {npTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -364,7 +524,7 @@ export default function PedidosPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => { setShowModal(false); setEstadoPago("Pendiente"); }}
+                  onClick={() => { setShowModal(false); resetNuevoPedido(); }}
                   className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
                 >
                   Cancelar
@@ -398,6 +558,45 @@ export default function PedidosPage() {
               </button>
             </div>
 
+            {/* DESCUENTO */}
+            <div className="mx-8 mb-6">
+              <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Descuento</label>
+              <select
+                value={despDescuentoTipo}
+                onChange={(e) => setDespDescuentoTipo(e.target.value as DescuentoTipo)}
+                className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors bg-white"
+              >
+                <option value="ninguno">Sin descuento</option>
+                <option value="automatico">Automático — 10% si son más de {UMBRAL_DESCUENTO_AUTOMATICO} bloques</option>
+                <option value="porcentaje">Manual — % sobre el subtotal</option>
+                <option value="monto">Manual — monto fijo (L.)</option>
+              </select>
+
+              {despDescuentoTipo === 'automatico' && pedidoADespachar.cantidad <= UMBRAL_DESCUENTO_AUTOMATICO && (
+                <p className="text-xs text-brand-accent mt-2">
+                  No se aplicará: este pedido tiene {UMBRAL_DESCUENTO_AUTOMATICO} bloques o menos.
+                </p>
+              )}
+
+              {(despDescuentoTipo === 'porcentaje' || despDescuentoTipo === 'monto') && (
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                    {despDescuentoTipo === 'porcentaje' ? 'Porcentaje de descuento (%)' : 'Monto de descuento (L.)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={despDescuentoTipo === 'porcentaje' ? 100 : undefined}
+                    value={despDescuentoValor}
+                    onChange={(e) => setDespDescuentoValor(parseFloat(e.target.value) || 0)}
+                    className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors"
+                    placeholder={despDescuentoTipo === 'porcentaje' ? 'Ej: 5' : 'Ej: 200'}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* RESUMEN DE PAGO */}
             <div className="mx-8 mb-6">
               <h4 className="text-xs font-medium text-[#8a8175] uppercase tracking-[0.12em] mb-3">Resumen de Pago</h4>
@@ -414,10 +613,20 @@ export default function PedidosPage() {
                   <span className="text-sm text-[#8a8175]">Precio Unitario</span>
                   <span className="text-sm text-[#201c17]">L. {Number(pedidoADespachar.precio_unitario).toFixed(2)}</span>
                 </div>
+                <div className="flex justify-between items-center px-5 py-3">
+                  <span className="text-sm text-[#8a8175]">Subtotal</span>
+                  <span className="text-sm text-[#201c17]">L. {despSubtotal.toFixed(2)}</span>
+                </div>
+                {despDescuentoMonto > 0 && (
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 px-5 py-3">
+                    <span className="text-sm text-brand-accent font-medium whitespace-nowrap">{labelDescuento(despDescuentoTipo, despDescuentoValor)}</span>
+                    <span className="text-sm font-medium text-brand-accent whitespace-nowrap">− L. {despDescuentoMonto.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center px-5 py-3 bg-[#faf8f4]">
                   <span className="text-sm text-[#201c17] font-medium">Total a Pagar</span>
                   <span className="text-lg font-display text-[#201c17]">
-                    L. {(pedidoADespachar.cantidad * pedidoADespachar.precio_unitario).toFixed(2)}
+                    L. {despTotal.toFixed(2)}
                   </span>
                 </div>
                 {Number(pedidoADespachar.anticipo) > 0 && (
@@ -428,11 +637,11 @@ export default function PedidosPage() {
                     </span>
                   </div>
                 )}
-                {Number(pedidoADespachar.anticipo) > 0 && Number(pedidoADespachar.anticipo) < (pedidoADespachar.cantidad * pedidoADespachar.precio_unitario) && (
+                {Number(pedidoADespachar.anticipo) > 0 && Number(pedidoADespachar.anticipo) < despTotal && (
                   <div className="flex justify-between items-center px-5 py-3">
                     <span className="text-sm text-brand-accent font-medium">Cantidad Faltante</span>
                     <span className="text-sm font-medium text-brand-accent">
-                      L. {Math.max(0, (pedidoADespachar.cantidad * pedidoADespachar.precio_unitario) - Number(pedidoADespachar.anticipo)).toFixed(2)}
+                      L. {Math.max(0, despTotal - Number(pedidoADespachar.anticipo)).toFixed(2)}
                     </span>
                   </div>
                 )}

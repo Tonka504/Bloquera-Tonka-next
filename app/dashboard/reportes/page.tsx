@@ -3,13 +3,19 @@
 import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2 } from 'lucide-react';
 import { getReporteGeneral } from '../../actions';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 
 export default function ReportesPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
 
   const cargarReporte = async () => {
-    const result = await getReporteGeneral();
+    setLoading(true);
+    const result = await getReporteGeneral(fechaDesde, fechaHasta);
     if (result.success) {
       setData(result.data);
     }
@@ -18,24 +24,7 @@ export default function ReportesPage() {
 
   useEffect(() => {
     cargarReporte();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
-        <Loader2 className="animate-spin" size={20} />
-        Cargando reporte...
-      </div>
-    );
-  }
-
-  if (!data) {
-    return <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 text-red-800">Error al cargar el reporte</div>;
-  }
-
-  const maxVentasMes = Math.max(...data.ventasPorMes.map((v: any) => Number(v.total)), 1);
-  const maxGastosCat = Math.max(...data.gastosPorCategoria.map((g: any) => Number(g.total)), 1);
-  const maxTopClientes = Math.max(...data.topClientes.map((c: any) => Number(c.total)), 1);
+  }, [fechaDesde, fechaHasta]);
 
   const formatMes = (mesStr: string) => {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -43,13 +32,34 @@ export default function ReportesPage() {
     return meses[date.getMonth()] || mesStr;
   };
 
+  const maxVentasMes = data ? Math.max(...data.ventasPorMes.map((v: any) => Number(v.total)), 1) : 1;
+  const maxGastosCat = data ? Math.max(...data.gastosPorCategoria.map((g: any) => Number(g.total)), 1) : 1;
+  const maxTopClientes = data ? Math.max(...data.topClientes.map((c: any) => Number(c.total)), 1) : 1;
+
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
-      <div className="mb-8 lg:mb-10">
-        <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Análisis</p>
-        <h1 className="font-display text-3xl text-[#201c17]">Reporte General</h1>
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8 lg:mb-10">
+        <div>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Análisis</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Reporte General</h1>
+        </div>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
+          <Loader2 className="animate-spin" size={20} />
+          Cargando reporte...
+        </div>
+      ) : !data ? (
+        <div className="text-red-800">Error al cargar el reporte</div>
+      ) : (
+        <>
       {/* KPIs principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-brand-line border border-brand-line mb-6">
         <div className="p-6 bg-white">
@@ -193,6 +203,8 @@ export default function ReportesPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

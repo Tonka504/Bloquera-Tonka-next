@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { getDashboardResumen } from '../actions';
 import Link from 'next/link';
+import RangoFechas from '../components/RangoFechas';
+import { rangoMesActual } from '../../lib/dates';
 
 const CARD = 'bg-white border border-brand-line';
 
@@ -32,6 +34,9 @@ export default function Dashboard() {
     facturasPendientes: [],
   });
   const [loading, setLoading] = useState(true);
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
   const router = useRouter();
 
   useEffect(() => {
@@ -41,11 +46,15 @@ export default function Dashboard() {
       return;
     }
     setUser(JSON.parse(savedUser));
-    cargarDatos();
   }, [router]);
 
+  useEffect(() => {
+    if (user) cargarDatos();
+  }, [user, fechaDesde, fechaHasta]);
+
   const cargarDatos = async () => {
-    const result: any = await getDashboardResumen();
+    setLoading(true);
+    const result: any = await getDashboardResumen(fechaDesde, fechaHasta);
     if (result.data) {
       setResumen(result.data);
     }
@@ -65,9 +74,17 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
-      <div className="mb-8 lg:mb-10">
-        <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
-        <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8 lg:mb-10">
+        <div>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
+        </div>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
       </div>
 
       {loading ? (
@@ -108,7 +125,7 @@ export default function Dashboard() {
 
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <Users size={14} strokeWidth={1.6} /> Por Cobrar
+                <Users size={14} strokeWidth={1.6} /> Por Cobrar (actual)
               </div>
               <p className="font-display text-3xl text-brand-accent">
                 L. {resumen.por_cobrar.toLocaleString()}

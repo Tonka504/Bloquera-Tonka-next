@@ -8,6 +8,8 @@ import {
   producirBloquesAction,
 } from '../../actions';
 import { toast } from 'sonner';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 import {
   Package,
   Truck,
@@ -52,6 +54,10 @@ export default function InventarioPage() {
   const [showProducir, setShowProducir] = useState(false);
   const [showHistorial, setShowHistorial] = useState(false);
 
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
+
   const [cementoAbastecer, setCementoAbastecer] = useState('');
   const [arenaAbastecer, setArenaAbastecer] = useState('');
 
@@ -68,7 +74,7 @@ export default function InventarioPage() {
       setInventario(inv.data);
     }
 
-    const hist = await getHistorialInventario();
+    const hist = await getHistorialInventario(fechaDesde, fechaHasta);
     if (hist.success) {
       setHistorial(hist.data);
     }
@@ -78,7 +84,7 @@ export default function InventarioPage() {
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [fechaDesde, fechaHasta]);
 
   async function handleAbastecer(e: React.FormEvent) {
     e.preventDefault();
@@ -411,11 +417,19 @@ export default function InventarioPage() {
       {showHistorial && (
         <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-7 border-b border-brand-line">
-              <h2 className="font-display text-xl text-[#201c17]">Historial de Movimientos</h2>
-              <button onClick={() => setShowHistorial(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
-                <X className="w-5 h-5" strokeWidth={1.6} />
-              </button>
+            <div className="flex flex-col gap-4 p-7 border-b border-brand-line">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-xl text-[#201c17]">Historial de Movimientos</h2>
+                <button onClick={() => setShowHistorial(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                  <X className="w-5 h-5" strokeWidth={1.6} />
+                </button>
+              </div>
+              <RangoFechas
+                fechaDesde={fechaDesde}
+                fechaHasta={fechaHasta}
+                onFechaDesde={setFechaDesde}
+                onFechaHasta={setFechaHasta}
+              />
             </div>
             <div className="overflow-auto p-7">
               {historial.length === 0 ? (
