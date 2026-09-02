@@ -445,6 +445,7 @@ export default function PedidosPage() {
                   className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors bg-white"
                 >
                   <option value="ninguno">Sin descuento</option>
+                  <option value="no_aplica">No aplica para descuentos</option>
                   <option value="automatico">Automático — 10% si son más de {UMBRAL_DESCUENTO_AUTOMATICO} bloques</option>
                   <option value="porcentaje">Manual — % sobre el subtotal</option>
                   <option value="monto">Manual — monto fijo (L.)</option>
@@ -567,6 +568,7 @@ export default function PedidosPage() {
                 className="w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] focus:outline-none focus:border-brand-accent transition-colors bg-white"
               >
                 <option value="ninguno">Sin descuento</option>
+                <option value="no_aplica">No aplica para descuentos</option>
                 <option value="automatico">Automático — 10% si son más de {UMBRAL_DESCUENTO_AUTOMATICO} bloques</option>
                 <option value="porcentaje">Manual — % sobre el subtotal</option>
                 <option value="monto">Manual — monto fijo (L.)</option>

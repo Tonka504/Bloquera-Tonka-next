@@ -2,11 +2,13 @@
 // (previsualización en los formularios, desglose en el PDF de factura).
 //
 // Modos soportados:
-//   'ninguno'    -> sin descuento
+//   'ninguno'    -> sin descuento (por defecto; puede pasar a 'automatico' si se supera el umbral)
+//   'no_aplica'  -> este pedido/factura NUNCA lleva descuento, ni siquiera el automático
+//                   (a diferencia de 'ninguno', la sugerencia automática no lo sobreescribe)
 //   'automatico' -> 10% si la cantidad de bloques es mayor a 500 (activable/desactivable por pedido/factura)
 //   'porcentaje' -> % manual sobre el subtotal (usa "valor", 0-100)
 //   'monto'      -> monto fijo en L. (usa "valor")
-export type DescuentoTipo = 'ninguno' | 'automatico' | 'porcentaje' | 'monto';
+export type DescuentoTipo = 'ninguno' | 'no_aplica' | 'automatico' | 'porcentaje' | 'monto';
 
 export const UMBRAL_DESCUENTO_AUTOMATICO = 500;
 export const PORCENTAJE_DESCUENTO_AUTOMATICO = 10;

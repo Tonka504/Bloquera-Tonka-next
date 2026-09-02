@@ -4,6 +4,8 @@
 --
 -- Modos de descuento soportados (columna descuento_tipo):
 --   'ninguno'     -> sin descuento
+--   'no_aplica'   -> nunca lleva descuento, ni siquiera el automático (agregado después, no requirió
+--                    migración porque descuento_tipo ya es VARCHAR(20) sin restricción de valores)
 --   'automatico'  -> 10% si la cantidad de bloques es mayor a 500 (activable/desactivable por pedido/factura)
 --   'porcentaje'  -> % manual, usa descuento_valor (0-100)
 --   'monto'       -> monto fijo en L., usa descuento_valor

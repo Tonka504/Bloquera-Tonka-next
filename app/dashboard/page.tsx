@@ -17,7 +17,7 @@ import {
 import { getDashboardResumen } from '../actions';
 import Link from 'next/link';
 import RangoFechas from '../components/RangoFechas';
-import { rangoMesActual } from '../../lib/dates';
+import { rangoMesActual, formatRangoLegible } from '../../lib/dates';
 
 const CARD = 'bg-white border border-brand-line';
 
@@ -78,6 +78,11 @@ export default function Dashboard() {
         <div>
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
           <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
+          {fechaDesde && fechaHasta && (
+            <p className="text-sm text-[#8a8175] mt-1">
+              Mostrando el periodo del {formatRangoLegible(fechaDesde, fechaHasta)}
+            </p>
+          )}
         </div>
         <RangoFechas
           fechaDesde={fechaDesde}
@@ -98,7 +103,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border border-brand-line divide-y md:divide-y-0 md:divide-x divide-brand-line mb-10">
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <TrendingUp size={14} strokeWidth={1.6} /> Ventas Totales
+                <TrendingUp size={14} strokeWidth={1.6} /> Ventas del Periodo
               </div>
               <p className="font-display text-3xl text-[#201c17]">
                 L. {resumen.ventas.toLocaleString()}
@@ -107,7 +112,7 @@ export default function Dashboard() {
 
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <TrendingDown size={14} strokeWidth={1.6} /> Gastos Totales
+                <TrendingDown size={14} strokeWidth={1.6} /> Gastos del Periodo
               </div>
               <p className="font-display text-3xl text-[#201c17]">
                 L. {resumen.gastos.toLocaleString()}
@@ -116,7 +121,7 @@ export default function Dashboard() {
 
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <DollarSign size={14} strokeWidth={1.6} /> Balance
+                <DollarSign size={14} strokeWidth={1.6} /> Balance del Periodo
               </div>
               <p className={`font-display text-3xl ${resumen.balance >= 0 ? 'text-[#201c17]' : 'text-red-800'}`}>
                 L. {resumen.balance.toLocaleString()}
