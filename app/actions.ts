@@ -80,6 +80,8 @@ export type DashboardResumen = {
   ventasPorMes: { mes: string; total: number }[];
   stockBajo: { tipo: string; cantidad: number }[];
   facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[];
+  // Pedidos de Seguimiento con saldo por cobrar (los 5 mayores)
+  saldosSeguimiento: { id: number; cliente: string; saldo_pendiente: number }[];
 };
 
 export type ReporteGeneral = {
@@ -92,7 +94,22 @@ export type ReporteGeneral = {
   ventasPorMes: { mes: string; total: number }[];
   gastosPorCategoria: { categoria: string; total: number }[];
   topClientes: { cliente: string; total: number }[];
+  // Seguimiento de pedidos
+  seguimientoEntregado: number; // valor de las entregas del periodo (ya incluido en totalVentas)
+  seguimientoCobrado: number; // abonos recibidos en el periodo
+  seguimientoPorCobrar: number; // saldo pendiente actual (no depende del periodo)
 };
+
+// Suma dos series { mes, total } por mes (para juntar facturas + entregas de Seguimiento).
+function sumarPorMes(...series: { mes: string; total: number | string }[][]) {
+  const acc = new Map<string, number>();
+  for (const serie of series) {
+    for (const { mes, total } of serie) {
+      acc.set(mes, Math.round(((acc.get(mes) || 0) + Number(total)) * 100) / 100);
+    }
+  }
+  return Array.from(acc, ([mes, total]) => ({ mes, total })).sort((a, b) => a.mes.localeCompare(b.mes));
+}
 
 // --- Seguimiento de pedidos (entregas parciales + abonos) ---
 export type EstadoEntrega = 'Pendiente' | 'En proceso' | 'Entregado';
@@ -204,6 +221,20 @@ export async function getDashboardResumen(
   }
 
   try {
+    // Seguimiento: cada entrega cuenta como venta en su fecha (igual que un despacho).
+    const entregasResult = await sql`
+      SELECT COALESCE(SUM(total), 0) as total
+      FROM entregas_pedido
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
+    totalVentas += Number((entregasResult[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error ventas seguimiento:', e);
+  }
+
+  try {
     const gastosResult = await sql`
       SELECT COALESCE(SUM(monto), 0) as total
       FROM gastos
@@ -223,6 +254,29 @@ export async function getDashboardResumen(
     totalPorCobrar = Number((cobrarResult[0] as any)?.total || 0);
   } catch (e) {
     console.log('Error por cobrar:', e);
+  }
+
+  let saldosSeguimiento: { id: number; cliente: string; saldo_pendiente: number }[] = [];
+  try {
+    // Seguimiento: saldo = total del pedido - abonos (también deuda vigente, sin periodo).
+    const saldos = await sql`
+      SELECT p.id, p.cliente, GREATEST(p.total - COALESCE(a.abonado, 0), 0) AS saldo_pendiente
+      FROM pedidos_seguimiento p
+      LEFT JOIN (
+        SELECT pedido_id, SUM(monto) AS abonado FROM abonos_pedido GROUP BY pedido_id
+      ) a ON a.pedido_id = p.id
+      WHERE p.total - COALESCE(a.abonado, 0) > 0
+      ORDER BY saldo_pendiente DESC
+    `;
+    const lista = (saldos as any[]).map((s) => ({
+      id: Number(s.id),
+      cliente: s.cliente,
+      saldo_pendiente: Number(s.saldo_pendiente),
+    }));
+    totalPorCobrar += lista.reduce((sum, s) => sum + s.saldo_pendiente, 0);
+    saldosSeguimiento = lista.slice(0, 5);
+  } catch (e) {
+    console.log('Error por cobrar seguimiento:', e);
   }
 
   try {
@@ -251,6 +305,20 @@ export async function getDashboardResumen(
     ` as unknown as { mes: string; total: number }[];
   } catch (e) {
     console.log('Error ventas por mes:', e);
+  }
+
+  try {
+    const entregasPorMes = await sql`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', fecha), 'YYYY-MM-DD') as mes,
+        COALESCE(SUM(total), 0) as total
+      FROM entregas_pedido
+      WHERE fecha >= (CURRENT_DATE - INTERVAL '5 months')
+      GROUP BY DATE_TRUNC('month', fecha)
+    `;
+    ventasPorMes = sumarPorMes(ventasPorMes, entregasPorMes as unknown as { mes: string; total: number }[]);
+  } catch (e) {
+    console.log('Error ventas por mes seguimiento:', e);
   }
 
   try {
@@ -287,6 +355,7 @@ export async function getDashboardResumen(
       ventasPorMes: ventasPorMes || [],
       stockBajo: stockBajo || [],
       facturasPendientes: facturasPendientes || [],
+      saldosSeguimiento,
     },
   };
 }
@@ -739,6 +808,50 @@ export async function getReporteGeneral(
     console.log('Error ventas reporte:', e);
   }
 
+  // Seguimiento de pedidos: entregas (cuentan como venta), abonos del periodo y saldo actual.
+  let seguimientoEntregado = 0;
+  let seguimientoCobrado = 0;
+  let seguimientoPorCobrar = 0;
+  try {
+    const entregas = await sql`
+      SELECT COALESCE(SUM(total), 0) as total
+      FROM entregas_pedido
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
+    seguimientoEntregado = Number((entregas[0] as any)?.total || 0);
+    totalVentas += seguimientoEntregado;
+  } catch (e) {
+    console.log('Error entregas reporte:', e);
+  }
+
+  try {
+    const abonos = await sql`
+      SELECT COALESCE(SUM(monto), 0) as total
+      FROM abonos_pedido
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
+    seguimientoCobrado = Number((abonos[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error abonos reporte:', e);
+  }
+
+  try {
+    const saldo = await sql`
+      SELECT COALESCE(SUM(GREATEST(p.total - COALESCE(a.abonado, 0), 0)), 0) as total
+      FROM pedidos_seguimiento p
+      LEFT JOIN (
+        SELECT pedido_id, SUM(monto) AS abonado FROM abonos_pedido GROUP BY pedido_id
+      ) a ON a.pedido_id = p.id
+    `;
+    seguimientoPorCobrar = Number((saldo[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error saldo seguimiento reporte:', e);
+  }
+
   try {
     const gastos = await sql`
       SELECT COALESCE(SUM(monto), 0) as total
@@ -784,6 +897,18 @@ export async function getReporteGeneral(
   }
 
   try {
+    // Pedidos de Seguimiento a los que todavía les faltan bloques por entregar.
+    const porEntregar = await sql`
+      SELECT COUNT(*) as total
+      FROM pedidos_seguimiento p
+      WHERE p.cantidad_total > (SELECT COALESCE(SUM(cantidad), 0) FROM entregas_pedido WHERE pedido_id = p.id)
+    `;
+    totalPedidosPendientes += Number((porEntregar[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error pedidos seguimiento reporte:', e);
+  }
+
+  try {
     ventasPorMes = await sql`
       SELECT
         SUBSTRING(fecha_despacho::text, 1, 7) as mes,
@@ -797,6 +922,20 @@ export async function getReporteGeneral(
     ` as unknown as { mes: string; total: number }[];
   } catch (e) {
     console.log('Error ventas por mes reporte:', e);
+  }
+
+  try {
+    const entregasPorMes = await sql`
+      SELECT TO_CHAR(fecha, 'YYYY-MM') as mes, COALESCE(SUM(total), 0) as total
+      FROM entregas_pedido
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+      GROUP BY TO_CHAR(fecha, 'YYYY-MM')
+    `;
+    ventasPorMes = sumarPorMes(ventasPorMes, entregasPorMes as unknown as { mes: string; total: number }[]);
+  } catch (e) {
+    console.log('Error ventas por mes seguimiento reporte:', e);
   }
 
   try {
@@ -822,11 +961,36 @@ export async function getReporteGeneral(
         ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
       GROUP BY cliente
       ORDER BY total DESC
-      LIMIT 5
     ` as unknown as { cliente: string; total: number }[];
   } catch (e) {
     console.log('Error top clientes reporte:', e);
   }
+
+  try {
+    // Suma lo entregado por Seguimiento a cada cliente (mismo nombre, sin distinguir mayúsculas/espacios).
+    const clientesSeguimiento = await sql`
+      SELECT p.cliente, COALESCE(SUM(e.total), 0) as total
+      FROM entregas_pedido e
+      JOIN pedidos_seguimiento p ON p.id = e.pedido_id
+      WHERE 1=1
+        ${fechaDesde ? sql`AND e.fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND e.fecha <= ${fechaHasta}` : sql``}
+      GROUP BY p.cliente
+    `;
+    const acc = new Map<string, { cliente: string; total: number }>();
+    for (const c of [...topClientes, ...(clientesSeguimiento as unknown as { cliente: string; total: number }[])]) {
+      const clave = String(c.cliente || '').trim().toLowerCase();
+      const previo = acc.get(clave);
+      acc.set(clave, {
+        cliente: previo?.cliente || String(c.cliente || '').trim(),
+        total: Math.round(((previo?.total || 0) + Number(c.total)) * 100) / 100,
+      });
+    }
+    topClientes = Array.from(acc.values());
+  } catch (e) {
+    console.log('Error top clientes seguimiento reporte:', e);
+  }
+  topClientes = [...topClientes].sort((a, b) => Number(b.total) - Number(a.total)).slice(0, 5);
 
   return {
     success: true,
@@ -840,6 +1004,9 @@ export async function getReporteGeneral(
       ventasPorMes: ventasPorMes || [],
       gastosPorCategoria: gastosPorCategoria || [],
       topClientes: topClientes || [],
+      seguimientoEntregado,
+      seguimientoCobrado,
+      seguimientoPorCobrar,
     },
   };
 }
