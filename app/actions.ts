@@ -88,6 +88,58 @@ export type ReporteGeneral = {
   mes: string | null;
 };
 
+// --- Seguimiento de pedidos (entregas parciales + abonos) ---
+export type EstadoEntrega = 'Pendiente' | 'En proceso' | 'Entregado';
+export type EstadoPagoSeguimiento = 'Pendiente' | 'Parcial' | 'Pagado';
+export type EstadoPedidoSeguimiento = 'Pendiente' | 'En proceso' | 'Entregado' | 'Pagado' | 'Finalizado';
+export type MetodoPago = 'Efectivo' | 'Transferencia' | 'Tarjeta' | 'Otro';
+
+export type PedidoSeguimiento = {
+  id: number;
+  cliente: string;
+  fecha: string; // YYYY-MM-DD
+  tipo_bloque: string; // misma clave que inventario.tipo, ej. 'bloque_de_4"'
+  cantidad_total: number;
+  precio_unitario: number;
+  total: number;
+  observaciones: string;
+  // Calculados a partir del historial de entregas/abonos (nunca se guardan):
+  cantidad_entregada: number;
+  cantidad_pendiente: number;
+  porcentaje_entrega: number;
+  total_abonado: number;
+  saldo_pendiente: number;
+  estado_entrega: EstadoEntrega;
+  estado_pago: EstadoPagoSeguimiento;
+  estado: EstadoPedidoSeguimiento;
+};
+
+export type EntregaPedido = {
+  id: number;
+  pedido_id: number;
+  fecha: string;
+  cantidad: number;
+  precio_unitario: number;
+  total: number;
+  observaciones: string;
+};
+
+export type AbonoPedido = {
+  id: number;
+  pedido_id: number;
+  fecha: string;
+  monto: number;
+  metodo_pago: MetodoPago;
+  comprobante: string;
+  observaciones: string;
+};
+
+export type PedidoSeguimientoDetalle = {
+  pedido: PedidoSeguimiento;
+  entregas: EntregaPedido[];
+  abonos: AbonoPedido[];
+};
+
 // ============================================================
 // LOGIN
 // ============================================================
@@ -834,5 +886,341 @@ export async function guardarConfiguracion(config: {
   } catch (error) {
     console.error(error);
     return { success: false, message: 'Error al guardar configuración' };
+  }
+}
+
+// ============================================================
+// SEGUIMIENTO DE PEDIDOS (entregas parciales + abonos)
+// ============================================================
+// Módulo independiente del flujo pedidos -> despacho -> facturas.
+// Tablas: pedidos_seguimiento, entregas_pedido, abonos_pedido
+// (ver sql/2026-11-11_seguimiento_pedidos.sql).
+// Entregas y abonos son historial de solo inserción: nunca se editan ni borran.
+// Cantidades, saldos y estados se calculan siempre desde ese historial.
+
+const TIPOS_BLOQUE = ['bloque_de_4"', 'bloque_de_5"', 'bloque_de_6"'];
+const METODOS_PAGO: MetodoPago[] = ['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'];
+
+// Error de validación con mensaje para el usuario (se lanza dentro de transacciones).
+class ErrorSeguimiento extends Error {}
+
+// Dinero en centavos para evitar errores de redondeo de punto flotante.
+const aCentavos = (n: number | string) => Math.round(Number(n) * 100);
+
+function esFechaValida(fecha: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(fecha) && !Number.isNaN(Date.parse(fecha));
+}
+
+function calcularPedidoSeguimiento(row: any): PedidoSeguimiento {
+  const cantidad_total = Number(row.cantidad_total);
+  const cantidad_entregada = Number(row.cantidad_entregada || 0);
+  const total = Number(row.total);
+  const total_abonado = Number(row.total_abonado || 0);
+
+  const cantidad_pendiente = Math.max(cantidad_total - cantidad_entregada, 0);
+  const saldoCentavos = Math.max(aCentavos(total) - aCentavos(total_abonado), 0);
+  const porcentaje_entrega =
+    cantidad_total > 0 ? Math.min(Math.round((cantidad_entregada / cantidad_total) * 1000) / 10, 100) : 0;
+
+  const entregado = cantidad_pendiente === 0;
+  const pagado = saldoCentavos === 0;
+
+  const estado_entrega: EstadoEntrega =
+    cantidad_entregada === 0 ? 'Pendiente' : entregado ? 'Entregado' : 'En proceso';
+  const estado_pago: EstadoPagoSeguimiento =
+    total_abonado <= 0 ? 'Pendiente' : pagado ? 'Pagado' : 'Parcial';
+
+  let estado: EstadoPedidoSeguimiento;
+  if (entregado && pagado) estado = 'Finalizado';
+  else if (pagado) estado = 'Pagado';
+  else if (entregado) estado = 'Entregado';
+  else if (cantidad_entregada > 0) estado = 'En proceso';
+  else estado = 'Pendiente';
+
+  return {
+    id: Number(row.id),
+    cliente: row.cliente,
+    fecha: row.fecha,
+    tipo_bloque: row.tipo_bloque,
+    cantidad_total,
+    precio_unitario: Number(row.precio_unitario),
+    total,
+    observaciones: row.observaciones || '',
+    cantidad_entregada,
+    cantidad_pendiente,
+    porcentaje_entrega,
+    total_abonado,
+    saldo_pendiente: saldoCentavos / 100,
+    estado_entrega,
+    estado_pago,
+    estado,
+  };
+}
+
+export async function getPedidosSeguimiento(): Promise<ServerResult<PedidoSeguimiento[]>> {
+  try {
+    const rows = await sql`
+      SELECT
+        p.id, p.cliente, TO_CHAR(p.fecha, 'YYYY-MM-DD') AS fecha, p.tipo_bloque,
+        p.cantidad_total, p.precio_unitario, p.total, p.observaciones,
+        COALESCE(e.entregado, 0) AS cantidad_entregada,
+        COALESCE(a.abonado, 0) AS total_abonado
+      FROM pedidos_seguimiento p
+      LEFT JOIN (
+        SELECT pedido_id, SUM(cantidad) AS entregado FROM entregas_pedido GROUP BY pedido_id
+      ) e ON e.pedido_id = p.id
+      LEFT JOIN (
+        SELECT pedido_id, SUM(monto) AS abonado FROM abonos_pedido GROUP BY pedido_id
+      ) a ON a.pedido_id = p.id
+      ORDER BY p.id DESC
+    `;
+    return { success: true, data: (rows as any[]).map(calcularPedidoSeguimiento) };
+  } catch (error) {
+    console.error('Error en getPedidosSeguimiento:', error);
+    return { success: false, message: 'Error al cargar los pedidos' };
+  }
+}
+
+export async function getPedidoSeguimientoDetalle(
+  id: number
+): Promise<ServerResult<PedidoSeguimientoDetalle>> {
+  try {
+    if (!Number.isInteger(id) || id <= 0) {
+      return { success: false, message: 'Número de pedido inválido' };
+    }
+
+    const rows = await sql`
+      SELECT
+        p.id, p.cliente, TO_CHAR(p.fecha, 'YYYY-MM-DD') AS fecha, p.tipo_bloque,
+        p.cantidad_total, p.precio_unitario, p.total, p.observaciones,
+        (SELECT COALESCE(SUM(cantidad), 0) FROM entregas_pedido WHERE pedido_id = p.id) AS cantidad_entregada,
+        (SELECT COALESCE(SUM(monto), 0) FROM abonos_pedido WHERE pedido_id = p.id) AS total_abonado
+      FROM pedidos_seguimiento p
+      WHERE p.id = ${id}
+      LIMIT 1
+    `;
+    if (rows.length === 0) {
+      return { success: false, message: 'Pedido no encontrado' };
+    }
+
+    const entregas = await sql`
+      SELECT id, pedido_id, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha, cantidad,
+             precio_unitario, total, observaciones
+      FROM entregas_pedido
+      WHERE pedido_id = ${id}
+      ORDER BY fecha ASC, id ASC
+    `;
+    const abonos = await sql`
+      SELECT id, pedido_id, TO_CHAR(fecha, 'YYYY-MM-DD') AS fecha, monto,
+             metodo_pago, comprobante, observaciones
+      FROM abonos_pedido
+      WHERE pedido_id = ${id}
+      ORDER BY fecha ASC, id ASC
+    `;
+
+    return {
+      success: true,
+      data: {
+        pedido: calcularPedidoSeguimiento(rows[0]),
+        entregas: (entregas as any[]).map((e) => ({
+          id: Number(e.id),
+          pedido_id: Number(e.pedido_id),
+          fecha: e.fecha,
+          cantidad: Number(e.cantidad),
+          precio_unitario: Number(e.precio_unitario),
+          total: Number(e.total),
+          observaciones: e.observaciones || '',
+        })),
+        abonos: (abonos as any[]).map((a) => ({
+          id: Number(a.id),
+          pedido_id: Number(a.pedido_id),
+          fecha: a.fecha,
+          monto: Number(a.monto),
+          metodo_pago: a.metodo_pago,
+          comprobante: a.comprobante || '',
+          observaciones: a.observaciones || '',
+        })),
+      },
+    };
+  } catch (error) {
+    console.error('Error en getPedidoSeguimientoDetalle:', error);
+    return { success: false, message: 'Error al cargar el pedido' };
+  }
+}
+
+export async function crearPedidoSeguimientoAction(pedido: {
+  cliente: string;
+  fecha: string;
+  tipo_bloque: string;
+  cantidad_total: number;
+  precio_unitario: number;
+  observaciones?: string;
+}): Promise<ServerResult<{ id: number }>> {
+  try {
+    const cliente = String(pedido.cliente || '').trim();
+    const cantidad = Number(pedido.cantidad_total);
+    const precio = Number(pedido.precio_unitario);
+
+    if (!cliente) return { success: false, message: 'El nombre del cliente es obligatorio' };
+    if (!esFechaValida(pedido.fecha)) return { success: false, message: 'La fecha del pedido no es válida' };
+    if (!TIPOS_BLOQUE.includes(pedido.tipo_bloque)) return { success: false, message: 'Tipo de bloque inválido' };
+    if (!Number.isInteger(cantidad) || cantidad <= 0) {
+      return { success: false, message: 'La cantidad debe ser un número entero mayor a 0' };
+    }
+    if (!Number.isFinite(precio) || aCentavos(precio) <= 0) {
+      return { success: false, message: 'El precio unitario debe ser mayor a 0' };
+    }
+
+    const precioCentavos = aCentavos(precio);
+    const total = (precioCentavos * cantidad) / 100;
+
+    const rows = await sql`
+      INSERT INTO pedidos_seguimiento
+        (cliente, fecha, tipo_bloque, cantidad_total, precio_unitario, total, observaciones)
+      VALUES
+        (${cliente}, ${pedido.fecha}, ${pedido.tipo_bloque}, ${cantidad},
+         ${precioCentavos / 100}, ${total}, ${String(pedido.observaciones || '').trim()})
+      RETURNING id
+    `;
+    return { success: true, data: { id: Number((rows[0] as any).id) } };
+  } catch (error) {
+    console.error('Error en crearPedidoSeguimientoAction:', error);
+    return { success: false, message: 'Error al crear el pedido' };
+  }
+}
+
+export async function registrarEntregaAction(entrega: {
+  pedido_id: number;
+  cantidad: number;
+  fecha: string;
+  observaciones?: string;
+}): Promise<ServerResult<{ id: number }>> {
+  const cantidad = Number(entrega.cantidad);
+  if (!Number.isInteger(cantidad) || cantidad <= 0) {
+    return { success: false, message: 'La cantidad entregada debe ser un número entero mayor a 0' };
+  }
+  if (!esFechaValida(entrega.fecha)) {
+    return { success: false, message: 'La fecha de entrega no es válida' };
+  }
+
+  try {
+    // Todo en una transacción: si algo falla no queda la entrega a medias
+    // (entrega registrada sin descontar inventario, o al revés).
+    const id = await sql.begin(async (tx: any) => {
+      // FOR UPDATE bloquea el pedido para que dos entregas simultáneas
+      // no puedan superar entre ambas la cantidad pendiente.
+      const pedidos = await tx`
+        SELECT id, tipo_bloque, cantidad_total, precio_unitario
+        FROM pedidos_seguimiento
+        WHERE id = ${entrega.pedido_id}
+        FOR UPDATE
+      `;
+      if (pedidos.length === 0) throw new ErrorSeguimiento('Pedido no encontrado');
+      const pedido = pedidos[0];
+
+      const sumas = await tx`
+        SELECT COALESCE(SUM(cantidad), 0) AS entregado
+        FROM entregas_pedido
+        WHERE pedido_id = ${entrega.pedido_id}
+      `;
+      const pendiente = Number(pedido.cantidad_total) - Number(sumas[0].entregado);
+      if (pendiente <= 0) throw new ErrorSeguimiento('Este pedido ya fue entregado en su totalidad');
+      if (cantidad > pendiente) {
+        throw new ErrorSeguimiento(
+          `No puedes entregar ${cantidad.toLocaleString()} bloques: solo quedan ${pendiente.toLocaleString()} pendientes`
+        );
+      }
+
+      // La entrega saca bloques reales del inventario.
+      const stock = await tx`
+        SELECT cantidad FROM inventario WHERE tipo = ${pedido.tipo_bloque} FOR UPDATE
+      `;
+      const disponible = stock.length > 0 ? Number(stock[0].cantidad) : 0;
+      if (disponible < cantidad) {
+        throw new ErrorSeguimiento(
+          `No hay suficiente inventario. Necesitas ${cantidad.toLocaleString()} bloques y hay ${disponible.toLocaleString()}`
+        );
+      }
+
+      const precio = Number(pedido.precio_unitario);
+      const total = (aCentavos(precio) * cantidad) / 100;
+
+      const insert = await tx`
+        INSERT INTO entregas_pedido (pedido_id, fecha, cantidad, precio_unitario, total, observaciones)
+        VALUES (${entrega.pedido_id}, ${entrega.fecha}, ${cantidad}, ${precio}, ${total},
+                ${String(entrega.observaciones || '').trim()})
+        RETURNING id
+      `;
+
+      await tx`
+        UPDATE inventario SET cantidad = cantidad - ${cantidad} WHERE tipo = ${pedido.tipo_bloque}
+      `;
+      await tx`
+        INSERT INTO historial_inventario (tipo, cantidad, accion, fecha)
+        VALUES (${pedido.tipo_bloque}, ${cantidad}, 'venta', NOW())
+      `;
+
+      return Number(insert[0].id);
+    });
+
+    return { success: true, data: { id: Number(id) } };
+  } catch (error) {
+    if (error instanceof ErrorSeguimiento) return { success: false, message: error.message };
+    console.error('Error en registrarEntregaAction:', error);
+    return { success: false, message: 'Error al registrar la entrega' };
+  }
+}
+
+export async function registrarAbonoAction(abono: {
+  pedido_id: number;
+  monto: number;
+  fecha: string;
+  metodo_pago: MetodoPago;
+  comprobante?: string;
+  observaciones?: string;
+}): Promise<ServerResult<{ id: number }>> {
+  const montoCentavos = aCentavos(abono.monto);
+  if (!Number.isFinite(Number(abono.monto)) || montoCentavos <= 0) {
+    return { success: false, message: 'El monto del abono debe ser mayor a 0' };
+  }
+  if (!esFechaValida(abono.fecha)) {
+    return { success: false, message: 'La fecha del abono no es válida' };
+  }
+  if (!METODOS_PAGO.includes(abono.metodo_pago)) {
+    return { success: false, message: 'Método de pago inválido' };
+  }
+
+  try {
+    const id = await sql.begin(async (tx: any) => {
+      const pedidos = await tx`
+        SELECT id, total FROM pedidos_seguimiento WHERE id = ${abono.pedido_id} FOR UPDATE
+      `;
+      if (pedidos.length === 0) throw new ErrorSeguimiento('Pedido no encontrado');
+
+      const sumas = await tx`
+        SELECT COALESCE(SUM(monto), 0) AS abonado FROM abonos_pedido WHERE pedido_id = ${abono.pedido_id}
+      `;
+      const saldoCentavos = aCentavos(pedidos[0].total) - aCentavos(sumas[0].abonado);
+      if (saldoCentavos <= 0) throw new ErrorSeguimiento('Este pedido ya está pagado en su totalidad');
+      if (montoCentavos > saldoCentavos) {
+        throw new ErrorSeguimiento(
+          `El abono (L. ${(montoCentavos / 100).toFixed(2)}) supera el saldo pendiente (L. ${(saldoCentavos / 100).toFixed(2)})`
+        );
+      }
+
+      const insert = await tx`
+        INSERT INTO abonos_pedido (pedido_id, fecha, monto, metodo_pago, comprobante, observaciones)
+        VALUES (${abono.pedido_id}, ${abono.fecha}, ${montoCentavos / 100}, ${abono.metodo_pago},
+                ${String(abono.comprobante || '').trim()}, ${String(abono.observaciones || '').trim()})
+        RETURNING id
+      `;
+      return Number(insert[0].id);
+    });
+
+    return { success: true, data: { id: Number(id) } };
+  } catch (error) {
+    if (error instanceof ErrorSeguimiento) return { success: false, message: error.message };
+    console.error('Error en registrarAbonoAction:', error);
+    return { success: false, message: 'Error al registrar el abono' };
   }
 }
