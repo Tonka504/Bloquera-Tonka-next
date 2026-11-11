@@ -2,34 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## ⚠️ Non-standard Next.js version
-
-`package.json` pins `next@16.2.10` — newer than anything in your training data, with breaking API/convention changes from the Next.js you know. **Before writing App Router code (routing, data fetching, config, metadata, etc.), check `node_modules/next/dist/docs/01-app/` for the current API.** Don't assume Next.js 13–15 patterns still apply.
+@AGENTS.md
 
 ## Commands
 
-```bash
-npm run dev      # start dev server
-npm run build    # production build
-npm run start    # run production build
-npm run lint     # eslint (flat config, eslint-config-next)
-```
+- `npm run dev` — start dev server
+- `npm run build` — production build
+- `npm run start` — run production build
+- `npm run lint` — ESLint (flat config in `eslint.config.mjs`, extends `eslint-config-next` core-web-vitals + typescript)
 
-There is no test suite/framework configured in this repo.
+No test suite exists in this repo.
 
-`DATABASE_URL` (Postgres connection string) must be set — see `.env.local`. `lib/db.ts` auto-disables SSL only when the URL contains `localhost`/`127.0.0.1`; anything else requires SSL.
+`node_modules` is not installed in this checkout — run `npm install` before anything above will work.
 
 ## Architecture
 
-This is a single-tenant inventory/invoicing management app ("Bloquera Tonka") for a concrete-block business, in Spanish. It's a small monolith, not a multi-package project.
+Next.js App Router app (Spanish-language UI/data) for **Bloquera Tonka**, a small concrete-block factory's management system: pedidos (orders) → despacho (dispatch) → facturas (invoices), plus inventario, gastos (expenses), reportes, and configuración.
 
-- **Everything server-side lives in one file: `app/actions.ts`** (`'use server'`, ~750 lines). All data types and every DB read/write for every feature (pedidos, facturas, inventario, gastos, reportes, config, login) are defined here as exported `async function ...Action` / `get...` functions called directly from client components — no API routes, no separate service layer. When adding a feature, extend this file rather than creating a parallel pattern.
-- **DB access**: `lib/db.ts` exports a single `sql` tagged-template client (`postgres` / postgres.js). All queries in `actions.ts` use `sql\`...\`` directly — no ORM, no query builder, no migrations tooling checked into the repo (schema changes are applied by hand against Postgres).
-- **Server action return shape**: virtually every action returns `ServerResult<T> = { success: boolean; data?: T; message?: string }`. Follow this convention (try/catch, `console.error`, return `{ success: false, message }`) for new actions instead of throwing.
-- **Auth is intentionally minimal**: `loginAction` does a plaintext username/password lookup against `usuarios` (no hashing, no sessions/cookies, no middleware). On success the client stores the user object in `localStorage` (see `app/page.tsx`, the login screen) and `app/dashboard/layout.tsx` reads nothing back from it — route protection is effectively client-side only. Don't assume a real auth/session layer exists unless you're asked to build one.
-- **Core domain flow** (`despacharPedidoAction` in `app/actions.ts`): a row in `pedidos` (orders) gets "dispatched" — it's inserted into `historial_facturas` (the invoices/history table) with computed totals, matching `inventario` stock is decremented (matched by substring on the product name: `'4'|'5'|'6'` → `bloque_de_4"/5"/6"`), and the original `pedidos` row is deleted. There is no `facturas` table — "facturas" in the UI is `historial_facturas`.
-- **Known DB tables**: `usuarios`, `pedidos`, `historial_facturas`, `inventario`, `historial_inventario`, `gastos`, `configuracion`.
-- **Routes** (`app/`): `/` is the login page (client component); `/dashboard/*` (pedidos, facturas, inventario, gastos, reportes, config) share `app/dashboard/layout.tsx`, a client-rendered sidebar shell. Note `config` is deliberately hidden from the sidebar nav (see comment in `dashboard/layout.tsx`) but the route still works.
-- **PDF generation**: `lib/generateInvoicePDF.ts` builds invoice PDFs client-side with `jspdf` + `html2canvas`.
-- **Styling**: Tailwind CSS v4 (`@theme inline` in `app/globals.css`) with a custom brand palette exposed as `--color-brand-*` tokens (`brand-ink`, `brand-primary`, `brand-accent`, `brand-line`, etc.) — reuse these tokens rather than introducing new hex colors. Fonts: Inter (`--font-body`) for body text, Playfair Display (`--font-display`) for headings, both loaded via `next/font/google` in `app/layout.tsx`.
-- Toasts go through `sonner` (`<Toaster>` mounted once in the root layout); icons are `lucide-react`.
+**Data layer is a single file of server actions.** All DB access lives in `app/actions.ts` (`'use server'`) — there is no API route layer. Every page is a client component (`'use client'`) that calls these exported async functions directly and gets back a uniform `ServerResult<T> = { success, data?, message? }`. When adding a feature, add a typed action there rather than a new route handler.
+
+- `lib/db.ts` exports a single `postgres` (postgres.js) tagged-template client `sql`, built from `DATABASE_URL` (`ssl: 'require'`). No ORM/migrations tooling — schema changes are raw SQL applied directly to the DB.
+- `app/actions.ts` groups actions by domain (LOGIN, DASHBOARD, PEDIDOS, GASTOS, INVENTARIO, PRODUCCION MANUAL, FACTURAS, REPORTES, CONFIGURACION) with their types defined at the top of the same file — there's no separate types module.
+- Multi-query actions (dashboard/reportes aggregations) wrap each `sql` call in its own try/catch with a fallback default, so one failing query doesn't 500 the whole page — follow this pattern for new aggregate queries rather than one wrapping try/catch.
+- `inventario.tipo` is a string key acting as a poor-man's enum: `bloque_de_4"`, `bloque_de_5"`, `bloque_de_6"`, `cemento_bolsas`, `arena_m3`. Code branches on `producto.toLowerCase().includes('4'|'5'|'6')` to map a pedido's free-text `producto` to the right inventory row — keep new product types consistent with this convention (or fix the matching in both `despacharPedidoAction` and `producirBloquesAction` together if you change it).
+- Business flow: `despacharPedidoAction` converts a `pedidos` row into a `historial_facturas` row, decrements the matching `inventario` row, and deletes the pedido — treat this as the canonical "order → invoice" transition when touching either table. `producirBloquesAction` is the reverse-ish flow: consumes `cemento_bolsas`/`arena_m3` stock to produce bloques, logging every change to `historial_inventario`.
+- No transactions are used around these multi-statement flows (postgres.js supports `sql.begin`); be aware partial failures can leave data inconsistent if you extend them.
+
+**Auth is minimal and client-side.** `loginAction` checks plaintext `username`/`password` against `usuarios` in Postgres (no hashing, no sessions). On success the client stores the user in `localStorage` (`app/page.tsx`) and `app/dashboard/layout.tsx` reads nothing back from the server to gate access — there's no middleware-based route protection.
+
+**Layout**: `app/dashboard/layout.tsx` renders the sidebar/header chrome (nav driven by a `menuItems` array — add new sections there) around each `app/dashboard/*/page.tsx`. Root `app/page.tsx` is the login screen.
+
+PDF invoices are generated client-side in `lib/generateInvoicePDF.ts` via `jspdf` (called from the facturas page, not a server action).
+
+Styling is Tailwind v4 (`@tailwindcss/postcss`) with hardcoded hex colors (`#1E40AF`, `#0F172A`, etc.) rather than a themed palette — match existing colors when touching UI.

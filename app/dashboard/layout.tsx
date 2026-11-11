@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   ShoppingCart,
+  ClipboardList,
   FileText,
   Package,
   DollarSign,
@@ -20,11 +21,19 @@ import {
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/pedidos', label: 'Pedidos', icon: ShoppingCart },
+  { href: '/dashboard/seguimiento', label: 'Seguimiento', icon: ClipboardList },
   { href: '/dashboard/facturas', label: 'Facturas', icon: FileText },
   { href: '/dashboard/inventario', label: 'Inventario', icon: Package },
   { href: '/dashboard/gastos', label: 'Gastos', icon: DollarSign },
   { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
 ];
+
+// Activo en la ruta exacta o en sus subrutas (ej. /dashboard/seguimiento/12).
+// '/dashboard' solo coincide exacto para no quedar activo en todas las secciones.
+function esRutaActiva(pathname: string, href: string) {
+  if (pathname === href) return true;
+  return href !== '/dashboard' && pathname.startsWith(href + '/');
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -85,7 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="space-y-0.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive = esRutaActiva(pathname, item.href);
 
               return (
                 <Link
@@ -141,7 +150,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu size={22} strokeWidth={1.6} />
             </button>
             <div className="font-display text-lg sm:text-2xl text-[#201c17] tracking-wide truncate">
-              {menuItems.find(item => item.href === pathname)?.label || 'Dashboard'}
+              {menuItems.find(item => esRutaActiva(pathname, item.href))?.label || 'Dashboard'}
             </div>
           </div>
 
