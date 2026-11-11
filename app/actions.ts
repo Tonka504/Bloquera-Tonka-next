@@ -1219,3 +1219,110 @@ export async function registrarAbonoAction(abono: {
     return { success: false, message: 'Error al registrar el abono' };
   }
 }
+
+// Mueve pedidos de la pantalla "Pedidos" (tabla pedidos) al módulo de Seguimiento.
+// Por cada pedido, en su propia transacción:
+//  - crea el pedido en pedidos_seguimiento con el total ya con descuento,
+//  - registra como abono lo que ya se había cobrado (anticipo, o el total si estaba "Pagado"),
+//  - borra el pedido original para que no quede duplicado ni se pueda despachar dos veces.
+// No toca inventario: los bloques se descuentan cuando se registren las entregas.
+export async function pasarPedidosASeguimientoAction(
+  ids: number[]
+): Promise<ServerResult<{ movidos: { pedido_id: number; seguimiento_id: number }[]; errores: string[] }>> {
+  const movidos: { pedido_id: number; seguimiento_id: number }[] = [];
+  const errores: string[] = [];
+  const unicos = Array.from(new Set((ids || []).map(Number))).filter((n) => Number.isInteger(n) && n > 0);
+
+  if (unicos.length === 0) {
+    return { success: false, message: 'No se seleccionó ningún pedido' };
+  }
+
+  for (const id of unicos) {
+    try {
+      const seguimientoId = await sql.begin(async (tx: any) => {
+        const rows = await tx`
+          SELECT id, TO_CHAR(fecha::date, 'YYYY-MM-DD') AS fecha, cliente, producto, cantidad,
+                 precio_unitario, estado_pago, anticipo, descuento_tipo, descuento_valor
+          FROM pedidos
+          WHERE id = ${id}
+          FOR UPDATE
+        `;
+        if (rows.length === 0) throw new ErrorSeguimiento(`Pedido #${id}: ya no existe`);
+        const p = rows[0];
+
+        const producto = String(p.producto || '').toLowerCase();
+        const tipo = producto.includes('4')
+          ? 'bloque_de_4"'
+          : producto.includes('5')
+            ? 'bloque_de_5"'
+            : producto.includes('6')
+              ? 'bloque_de_6"'
+              : null;
+        if (!tipo) throw new ErrorSeguimiento(`Pedido #${id}: no se reconoce el tipo de bloque "${p.producto}"`);
+
+        const cantidad = Number(p.cantidad);
+        const precio = Number(p.precio_unitario);
+        if (!Number.isInteger(cantidad) || cantidad <= 0 || !(precio > 0)) {
+          throw new ErrorSeguimiento(`Pedido #${id}: cantidad o precio inválidos`);
+        }
+
+        const subtotal = (aCentavos(precio) * cantidad) / 100;
+        const descuentoTipo: DescuentoTipo = p.descuento_tipo || 'ninguno';
+        const descuento = calcularDescuento(subtotal, cantidad, descuentoTipo, Number(p.descuento_valor) || 0);
+        const totalCentavos = Math.max(aCentavos(subtotal) - aCentavos(descuento), 0);
+        if (totalCentavos <= 0) throw new ErrorSeguimiento(`Pedido #${id}: el total con descuento es 0`);
+
+        // Con descuento, el precio por bloque que se usa en las entregas es el efectivo.
+        const precioEfectivo = descuento > 0 ? Math.round(totalCentavos / cantidad) / 100 : precio;
+        const fecha = esFechaValida(p.fecha || '') ? p.fecha : new Date().toISOString().slice(0, 10);
+
+        const notas = [`Pasado desde Pedidos #${id}.`];
+        if (descuento > 0) {
+          notas.push(
+            `Descuento aplicado: L. ${(aCentavos(descuento) / 100).toFixed(2)} (precio original L. ${precio.toFixed(2)} por bloque).`
+          );
+        }
+
+        const insert = await tx`
+          INSERT INTO pedidos_seguimiento
+            (cliente, fecha, tipo_bloque, cantidad_total, precio_unitario, total, observaciones)
+          VALUES
+            (${String(p.cliente || '').trim() || 'Sin nombre'}, ${fecha}, ${tipo}, ${cantidad},
+             ${precioEfectivo}, ${totalCentavos / 100}, ${notas.join(' ')})
+          RETURNING id
+        `;
+        const nuevoId = Number(insert[0].id);
+
+        // Lo ya cobrado pasa como abono para que el saldo quede correcto.
+        let cobradoCentavos = 0;
+        let nota = '';
+        if (p.estado_pago === 'Pagado') {
+          cobradoCentavos = totalCentavos;
+          nota = 'Pago completo registrado en Pedidos antes del seguimiento';
+        } else if (Number(p.anticipo) > 0) {
+          cobradoCentavos = Math.min(aCentavos(p.anticipo), totalCentavos);
+          nota = 'Anticipo registrado en Pedidos antes del seguimiento';
+        }
+        if (cobradoCentavos > 0) {
+          await tx`
+            INSERT INTO abonos_pedido (pedido_id, fecha, monto, metodo_pago, comprobante, observaciones)
+            VALUES (${nuevoId}, ${fecha}, ${cobradoCentavos / 100}, 'Otro', '', ${nota})
+          `;
+        }
+
+        await tx`DELETE FROM pedidos WHERE id = ${id}`;
+        return nuevoId;
+      });
+
+      movidos.push({ pedido_id: id, seguimiento_id: Number(seguimientoId) });
+    } catch (error) {
+      if (error instanceof ErrorSeguimiento) errores.push(error.message);
+      else {
+        console.error(`Error al pasar pedido #${id} a seguimiento:`, error);
+        errores.push(`Pedido #${id}: error al pasarlo`);
+      }
+    }
+  }
+
+  return { success: movidos.length > 0, data: { movidos, errores }, message: errores.join('\n') || undefined };
+}

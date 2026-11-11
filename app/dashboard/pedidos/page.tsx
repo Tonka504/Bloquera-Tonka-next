@@ -1,9 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Truck, Trash2, Printer, Search, X, CheckCircle, Loader2, ShoppingCart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Truck, Trash2, Printer, Search, X, CheckCircle, Loader2, ShoppingCart, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
-import { getPedidos, crearPedidoAction, eliminarPedidoAction, despacharPedidoAction } from '../../actions';
+import {
+  getPedidos,
+  crearPedidoAction,
+  eliminarPedidoAction,
+  despacharPedidoAction,
+  pasarPedidosASeguimientoAction,
+} from '../../actions';
 import { calcularDescuento, labelDescuento, UMBRAL_DESCUENTO_AUTOMATICO, type DescuentoTipo } from '../../../lib/descuento';
 import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
 
@@ -19,6 +26,11 @@ export default function PedidosPage() {
   const [pedidoAEliminar, setPedidoAEliminar] = useState<any>(null);
   const [estadoPago, setEstadoPago] = useState("Pendiente");
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Pasar a Seguimiento: un pedido puntual o 'todos'
+  const [pasarObjetivo, setPasarObjetivo] = useState<any | 'todos' | null>(null);
+  const [pasando, setPasando] = useState(false);
 
   // Nuevo Pedido: cantidad/precio/descuento controlados para previsualizar el total
   const [npCantidad, setNpCantidad] = useState(100);
@@ -224,6 +236,33 @@ export default function PedidosPage() {
     }
   };
 
+  const confirmarPasar = async () => {
+    if (!pasarObjetivo) return;
+    const ids = pasarObjetivo === 'todos' ? pedidos.map((p) => p.id) : [pasarObjetivo.id];
+
+    setPasando(true);
+    const result = await pasarPedidosASeguimientoAction(ids);
+    setPasando(false);
+
+    const movidos = result.data?.movidos || [];
+    const errores = result.data?.errores || [];
+    errores.forEach((e) => toast.error(e));
+
+    if (movidos.length === 0) {
+      if (errores.length === 0) toast.error(result.message || 'No se pudo pasar el pedido');
+      return;
+    }
+
+    setPasarObjetivo(null);
+    if (movidos.length === 1 && pasarObjetivo !== 'todos') {
+      toast.success(`Pedido #${movidos[0].pedido_id} pasado a Seguimiento`);
+      router.push(`/dashboard/seguimiento/${movidos[0].seguimiento_id}`);
+    } else {
+      toast.success(`${movidos.length} pedido(s) pasados a Seguimiento`);
+      router.push('/dashboard/seguimiento');
+    }
+  };
+
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'Pagado': return 'text-emerald-800';
@@ -241,12 +280,22 @@ export default function PedidosPage() {
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Gestión</p>
           <h1 className="font-display text-3xl text-[#201c17]">Pedidos</h1>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-brand-primary hover:bg-brand-ink-soft text-white px-5 py-2.5 transition-colors text-sm tracking-wide"
-        >
-          <Plus size={16} /> Nuevo Pedido
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {pedidos.length > 0 && (
+            <button
+              onClick={() => setPasarObjetivo('todos')}
+              className="flex items-center gap-2 border border-brand-primary text-[#201c17] hover:bg-[#faf8f4] px-5 py-2.5 transition-colors text-sm tracking-wide"
+            >
+              <ClipboardList size={16} /> Pasar todos a Seguimiento
+            </button>
+          )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-brand-primary hover:bg-brand-ink-soft text-white px-5 py-2.5 transition-colors text-sm tracking-wide"
+          >
+            <Plus size={16} /> Nuevo Pedido
+          </button>
+        </div>
       </div>
 
       {/* Búsqueda y orden */}
@@ -349,6 +398,13 @@ export default function PedidosPage() {
                           title="Imprimir cotización"
                         >
                           <Printer size={16} strokeWidth={1.6} />
+                        </button>
+                        <button
+                          onClick={() => setPasarObjetivo(p)}
+                          className="p-1.5 text-[#8a8175] hover:text-brand-accent transition-colors"
+                          title="Pasar a Seguimiento (entregas parciales y abonos)"
+                        >
+                          <ClipboardList size={16} strokeWidth={1.6} />
                         </button>
                         <button
                           onClick={() => abrirModalEliminar(p)}
@@ -749,6 +805,51 @@ export default function PedidosPage() {
                 className="flex-1 py-3 bg-red-800 hover:bg-red-900 text-white text-sm tracking-wide transition-colors"
               >
                 Sí, Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== MODAL PASAR A SEGUIMIENTO ========== */}
+      {pasarObjetivo && (
+        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md p-8 text-center">
+            <div className="w-14 h-14 border border-brand-accent/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ClipboardList size={22} strokeWidth={1.6} className="text-brand-accent" />
+            </div>
+            <h3 className="font-display text-xl text-[#201c17] mb-2">
+              {pasarObjetivo === 'todos' ? `¿Pasar ${pedidos.length} pedido(s) a Seguimiento?` : '¿Pasar a Seguimiento?'}
+            </h3>
+            <p className="text-[#8a8175] text-sm mb-3">
+              {pasarObjetivo === 'todos' ? (
+                <>Todos los pedidos de esta lista se moverán al módulo de Seguimiento.</>
+              ) : (
+                <>
+                  El pedido <span className="font-medium text-[#201c17]">#{pasarObjetivo.id}</span> de{' '}
+                  <span className="font-medium text-[#201c17]">{pasarObjetivo.cliente}</span> se moverá al módulo de Seguimiento.
+                </>
+              )}
+            </p>
+            <p className="text-[#8a8175] text-xs mb-6 text-left bg-[#faf8f4] border border-brand-line p-3 leading-relaxed">
+              Se conservan cliente, fecha, cantidad, precio y descuento. El anticipo (o el pago completo si estaba
+              &quot;Pagado&quot;) queda registrado como abono. El pedido sale de esta lista y desde ahí se le registran
+              entregas parciales y abonos.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPasarObjetivo(null)}
+                disabled={pasando}
+                className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarPasar}
+                disabled={pasando}
+                className="flex-1 py-3 bg-brand-primary hover:bg-brand-ink-soft disabled:opacity-60 text-white text-sm tracking-wide transition-colors"
+              >
+                {pasando ? 'Pasando...' : 'Sí, pasar'}
               </button>
             </div>
           </div>
