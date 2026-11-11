@@ -32,6 +32,7 @@ export default function Dashboard() {
     ventasPorMes: [],
     stockBajo: [],
     facturasPendientes: [],
+    saldosSeguimiento: [] as { id: number; cliente: string; saldo_pendiente: number }[],
   });
   const [loading, setLoading] = useState(true);
   const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
@@ -245,15 +246,38 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <FileText className="text-[#8a8175]" size={17} strokeWidth={1.6} />
-                  <h3 className="font-display text-lg text-[#201c17]">Facturas Pendientes</h3>
+                  <h3 className="font-display text-lg text-[#201c17]">Saldos por Cobrar</h3>
                 </div>
-                <Link href="/dashboard/facturas" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
-                  Ver todas
+                <Link href="/dashboard/seguimiento" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
+                  Ver todos
                 </Link>
               </div>
 
+              {/* Pedidos de Seguimiento con saldo pendiente */}
+              {(resumen.saldosSeguimiento || []).length > 0 && (
+                <div className="divide-y divide-brand-line mb-2">
+                  {(resumen.saldosSeguimiento || []).map((s) => (
+                    <Link
+                      key={`seg-${s.id}`}
+                      href={`/dashboard/seguimiento/${s.id}`}
+                      className="flex items-center justify-between py-3 hover:bg-[#faf8f4] transition-colors"
+                    >
+                      <div>
+                        <p className="text-sm text-[#201c17]">{s.cliente}</p>
+                        <p className="text-xs text-[#8a8175] mt-0.5">Pedido en seguimiento #{s.id}</p>
+                      </div>
+                      <span className="text-sm font-medium text-red-800">
+                        L. {Number(s.saldo_pendiente).toLocaleString()}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
               {resumen.facturasPendientes.length === 0 ? (
-                <div className="text-center py-8 text-[#a39a8c] text-sm">No hay facturas pendientes</div>
+                (resumen.saldosSeguimiento || []).length === 0 && (
+                  <div className="text-center py-8 text-[#a39a8c] text-sm">No hay saldos pendientes</div>
+                )
               ) : (
                 <div className="divide-y divide-brand-line">
                   {resumen.facturasPendientes.map((factura: any, idx: number) => (

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2, Truck, Wallet, ClipboardList } from 'lucide-react';
+import Link from 'next/link';
 import { getReporteGeneral } from '../../actions';
 import RangoFechas from '../../components/RangoFechas';
 import { rangoMesActual } from '../../../lib/dates';
@@ -99,6 +100,39 @@ export default function ReportesPage() {
             <ShoppingCart size={14} strokeWidth={1.6} /> Pedidos Pendientes
           </div>
           <p className="font-display text-2xl text-brand-accent">{data.totalPedidosPendientes}</p>
+        </div>
+      </div>
+
+      {/* Seguimiento de pedidos (entregas parciales y abonos) */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="flex items-center gap-2 text-xs font-medium text-[#8a8175] uppercase tracking-[0.15em]">
+            <ClipboardList size={14} strokeWidth={1.6} /> Seguimiento de pedidos
+          </h2>
+          <Link href="/dashboard/seguimiento" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
+            Ver pedidos
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-brand-line border border-brand-line">
+          <div className="p-6 bg-white">
+            <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+              <Truck size={14} strokeWidth={1.6} /> Entregado en el periodo
+            </div>
+            <p className="font-display text-2xl text-[#201c17]">L. {Number(data.seguimientoEntregado || 0).toLocaleString()}</p>
+            <p className="text-[11px] text-[#a39a8c] mt-1">Ya incluido en Total Ventas</p>
+          </div>
+          <div className="p-6 bg-white">
+            <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+              <Wallet size={14} strokeWidth={1.6} /> Abonos cobrados en el periodo
+            </div>
+            <p className="font-display text-2xl text-emerald-800">L. {Number(data.seguimientoCobrado || 0).toLocaleString()}</p>
+          </div>
+          <div className="p-6 bg-white">
+            <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
+              <Users size={14} strokeWidth={1.6} /> Saldo por cobrar (actual)
+            </div>
+            <p className="font-display text-2xl text-red-800">L. {Number(data.seguimientoPorCobrar || 0).toLocaleString()}</p>
+          </div>
         </div>
       </div>
 
