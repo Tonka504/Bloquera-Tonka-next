@@ -8,6 +8,8 @@ import {
   producirBloquesAction,
 } from '../../actions';
 import { toast } from 'sonner';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 import {
   Package,
   Truck,
@@ -52,6 +54,10 @@ export default function InventarioPage() {
   const [showProducir, setShowProducir] = useState(false);
   const [showHistorial, setShowHistorial] = useState(false);
 
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
+
   const [cementoAbastecer, setCementoAbastecer] = useState('');
   const [arenaAbastecer, setArenaAbastecer] = useState('');
 
@@ -68,7 +74,7 @@ export default function InventarioPage() {
       setInventario(inv.data);
     }
 
-    const hist = await getHistorialInventario();
+    const hist = await getHistorialInventario(fechaDesde, fechaHasta);
     if (hist.success) {
       setHistorial(hist.data);
     }
@@ -78,7 +84,7 @@ export default function InventarioPage() {
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [fechaDesde, fechaHasta]);
 
   async function handleAbastecer(e: React.FormEvent) {
     e.preventDefault();
@@ -150,31 +156,31 @@ export default function InventarioPage() {
   }
 
   return (
-    <div className="px-10 py-9 space-y-8">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Materiales</p>
           <h1 className="font-display text-3xl text-[#201c17]">Inventario</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowHistorial(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
           >
             <History className="w-4 h-4" strokeWidth={1.6} />
             Historial
           </button>
           <button
             onClick={() => setShowAbastecer(true)}
-            className="flex items-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
           >
             <Truck className="w-4 h-4" strokeWidth={1.6} />
             Abastecer
           </button>
           <button
             onClick={() => setShowProducir(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-primary text-white hover:bg-brand-ink-soft transition-colors text-sm"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary text-white hover:bg-brand-ink-soft transition-colors text-sm"
           >
             <Factory className="w-4 h-4" strokeWidth={1.6} />
             Producir
@@ -411,11 +417,19 @@ export default function InventarioPage() {
       {showHistorial && (
         <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-7 border-b border-brand-line">
-              <h2 className="font-display text-xl text-[#201c17]">Historial de Movimientos</h2>
-              <button onClick={() => setShowHistorial(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
-                <X className="w-5 h-5" strokeWidth={1.6} />
-              </button>
+            <div className="flex flex-col gap-4 p-7 border-b border-brand-line">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-xl text-[#201c17]">Historial de Movimientos</h2>
+                <button onClick={() => setShowHistorial(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                  <X className="w-5 h-5" strokeWidth={1.6} />
+                </button>
+              </div>
+              <RangoFechas
+                fechaDesde={fechaDesde}
+                fechaHasta={fechaHasta}
+                onFechaDesde={setFechaDesde}
+                onFechaHasta={setFechaHasta}
+              />
             </div>
             <div className="overflow-auto p-7">
               {historial.length === 0 ? (

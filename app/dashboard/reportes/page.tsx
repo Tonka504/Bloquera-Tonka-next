@@ -1,30 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2, CalendarClock } from 'lucide-react';
-import { getReporteGeneral, getMesesDisponibles } from '../../actions';
-
-const MESES_LARGO = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
-const formatMesLargo = (mesStr: string) => {
-  // mesStr: 'YYYY-MM'
-  const [anio, mesNum] = mesStr.split('-').map(Number);
-  const nombre = MESES_LARGO[(mesNum || 1) - 1] || mesStr;
-  return `${nombre} ${anio}`;
-};
+import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Loader2 } from 'lucide-react';
+import { getReporteGeneral } from '../../actions';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 
 export default function ReportesPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [meses, setMeses] = useState<string[]>([]);
-  const [mesSeleccionado, setMesSeleccionado] = useState<string>('todos');
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
 
-  const cargarReporte = async (mes?: string) => {
+  const cargarReporte = async () => {
     setLoading(true);
-    const result = await getReporteGeneral(mes && mes !== 'todos' ? mes : undefined);
+    const result = await getReporteGeneral(fechaDesde, fechaHasta);
     if (result.success) {
       setData(result.data);
     }
@@ -32,38 +23,8 @@ export default function ReportesPage() {
   };
 
   useEffect(() => {
-    const mesActual = new Date().toISOString().slice(0, 7);
-    setMesSeleccionado(mesActual);
-    cargarReporte(mesActual);
-
-    getMesesDisponibles().then((result) => {
-      if (result.success) {
-        setMeses(result.data || []);
-      }
-    });
-  }, []);
-
-  const cambiarMes = (mes: string) => {
-    setMesSeleccionado(mes);
-    cargarReporte(mes);
-  };
-
-  if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
-        <Loader2 className="animate-spin" size={20} />
-        Cargando reporte...
-      </div>
-    );
-  }
-
-  if (!data) {
-    return <div className="px-10 py-9 text-red-800">Error al cargar el reporte</div>;
-  }
-
-  const maxVentasMes = Math.max(...data.ventasPorMes.map((v: any) => Number(v.total)), 1);
-  const maxGastosCat = Math.max(...data.gastosPorCategoria.map((g: any) => Number(g.total)), 1);
-  const maxTopClientes = Math.max(...data.topClientes.map((c: any) => Number(c.total)), 1);
+    cargarReporte();
+  }, [fechaDesde, fechaHasta]);
 
   const formatMes = (mesStr: string) => {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -71,33 +32,34 @@ export default function ReportesPage() {
     return meses[date.getMonth()] || mesStr;
   };
 
+  const maxVentasMes = data ? Math.max(...data.ventasPorMes.map((v: any) => Number(v.total)), 1) : 1;
+  const maxGastosCat = data ? Math.max(...data.gastosPorCategoria.map((g: any) => Number(g.total)), 1) : 1;
+  const maxTopClientes = data ? Math.max(...data.topClientes.map((c: any) => Number(c.total)), 1) : 1;
+
   return (
-    <div className="px-10 py-9">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-10">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8 lg:mb-10">
         <div>
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Análisis</p>
           <h1 className="font-display text-3xl text-[#201c17]">Reporte General</h1>
-          <p className="text-xs text-[#8a8175] mt-2">
-            {data.mes ? `Mostrando ${formatMesLargo(data.mes)}` : 'Mostrando el acumulado de todos los meses'}
-          </p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <CalendarClock size={16} className="text-[#8a8175]" strokeWidth={1.6} />
-          <select
-            value={mesSeleccionado}
-            onChange={(e) => cambiarMes(e.target.value)}
-            disabled={loading}
-            className="px-4 py-2.5 border border-brand-line focus:outline-none focus:border-brand-accent text-sm bg-white transition-colors"
-          >
-            <option value="todos">Todo el historial</option>
-            {meses.map((mes) => (
-              <option key={mes} value={mes}>{formatMesLargo(mes)}</option>
-            ))}
-          </select>
-        </div>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
+          <Loader2 className="animate-spin" size={20} />
+          Cargando reporte...
+        </div>
+      ) : !data ? (
+        <div className="text-red-800">Error al cargar el reporte</div>
+      ) : (
+        <>
       {/* KPIs principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-brand-line border border-brand-line mb-6">
         <div className="p-6 bg-white">
@@ -122,7 +84,7 @@ export default function ReportesPage() {
         </div>
         <div className="p-6 bg-white">
           <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-            <Package size={14} strokeWidth={1.6} /> Bloques en Stock (hoy)
+            <Package size={14} strokeWidth={1.6} /> Bloques en Stock
           </div>
           <p className="font-display text-2xl text-[#201c17]">{data.totalBloquesStock.toLocaleString()} und</p>
         </div>
@@ -134,7 +96,7 @@ export default function ReportesPage() {
         </div>
         <div className="p-6 bg-white">
           <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-            <ShoppingCart size={14} strokeWidth={1.6} /> Pedidos Pendientes (hoy)
+            <ShoppingCart size={14} strokeWidth={1.6} /> Pedidos Pendientes
           </div>
           <p className="font-display text-2xl text-brand-accent">{data.totalPedidosPendientes}</p>
         </div>
@@ -143,7 +105,7 @@ export default function ReportesPage() {
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Ventas por mes */}
-        <div className="border border-brand-line p-7">
+        <div className="border border-brand-line p-5 sm:p-7">
           <div className="flex items-center gap-2 mb-8">
             <BarChart3 className="text-[#8a8175]" size={17} strokeWidth={1.6} />
             <h3 className="font-display text-lg text-[#201c17]">Ventas por Mes</h3>
@@ -175,7 +137,7 @@ export default function ReportesPage() {
         </div>
 
         {/* Gastos por categoría */}
-        <div className="border border-brand-line p-7">
+        <div className="border border-brand-line p-5 sm:p-7">
           <div className="flex items-center gap-2 mb-8">
             <TrendingDown className="text-[#8a8175]" size={17} strokeWidth={1.6} />
             <h3 className="font-display text-lg text-[#201c17]">Gastos por Categoría</h3>
@@ -208,7 +170,7 @@ export default function ReportesPage() {
       </div>
 
       {/* Top clientes */}
-      <div className="border border-brand-line p-7">
+      <div className="border border-brand-line p-5 sm:p-7">
         <div className="flex items-center gap-2 mb-8">
           <Users className="text-[#8a8175]" size={17} strokeWidth={1.6} />
           <h3 className="font-display text-lg text-[#201c17]">Top Clientes</h3>
@@ -241,6 +203,8 @@ export default function ReportesPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

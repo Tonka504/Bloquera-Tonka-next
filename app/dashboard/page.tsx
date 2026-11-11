@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { getDashboardResumen } from '../actions';
 import Link from 'next/link';
+import RangoFechas from '../components/RangoFechas';
+import { rangoMesActual, formatRangoLegible } from '../../lib/dates';
 
 const CARD = 'bg-white border border-brand-line';
 
@@ -32,6 +34,9 @@ export default function Dashboard() {
     facturasPendientes: [],
   });
   const [loading, setLoading] = useState(true);
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
   const router = useRouter();
 
   useEffect(() => {
@@ -41,11 +46,15 @@ export default function Dashboard() {
       return;
     }
     setUser(JSON.parse(savedUser));
-    cargarDatos();
   }, [router]);
 
+  useEffect(() => {
+    if (user) cargarDatos();
+  }, [user, fechaDesde, fechaHasta]);
+
   const cargarDatos = async () => {
-    const result: any = await getDashboardResumen();
+    setLoading(true);
+    const result: any = await getDashboardResumen(fechaDesde, fechaHasta);
     if (result.data) {
       setResumen(result.data);
     }
@@ -63,22 +72,24 @@ export default function Dashboard() {
     return meses[date.getMonth()] || mesStr;
   };
 
-  const mesActualLabel = new Date()
-    .toLocaleDateString('es-HN', { month: 'long', year: 'numeric' })
-    .replace(/^\w/, (c) => c.toUpperCase());
-
   return (
-    <div className="px-10 py-9">
-      <div className="mb-10">
-        <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
-        <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
-        <p className="text-xs text-[#8a8175] mt-2">
-          Ventas y gastos de {mesActualLabel}. Los meses anteriores se guardan completos en{' '}
-          <Link href="/dashboard/reportes" className="text-brand-accent hover:underline">
-            Reportes
-          </Link>
-          .
-        </p>
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8 lg:mb-10">
+        <div>
+          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
+          <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
+          {fechaDesde && fechaHasta && (
+            <p className="text-sm text-[#8a8175] mt-1">
+              Mostrando el periodo del {formatRangoLegible(fechaDesde, fechaHasta)}
+            </p>
+          )}
+        </div>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
       </div>
 
       {loading ? (
@@ -92,7 +103,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border border-brand-line divide-y md:divide-y-0 md:divide-x divide-brand-line mb-10">
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <TrendingUp size={14} strokeWidth={1.6} /> Ventas de {mesActualLabel}
+                <TrendingUp size={14} strokeWidth={1.6} /> Ventas del Periodo
               </div>
               <p className="font-display text-3xl text-[#201c17]">
                 L. {resumen.ventas.toLocaleString()}
@@ -101,7 +112,7 @@ export default function Dashboard() {
 
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <TrendingDown size={14} strokeWidth={1.6} /> Gastos de {mesActualLabel}
+                <TrendingDown size={14} strokeWidth={1.6} /> Gastos del Periodo
               </div>
               <p className="font-display text-3xl text-[#201c17]">
                 L. {resumen.gastos.toLocaleString()}
@@ -110,7 +121,7 @@ export default function Dashboard() {
 
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <DollarSign size={14} strokeWidth={1.6} /> Balance del Mes
+                <DollarSign size={14} strokeWidth={1.6} /> Balance del Periodo
               </div>
               <p className={`font-display text-3xl ${resumen.balance >= 0 ? 'text-[#201c17]' : 'text-red-800'}`}>
                 L. {resumen.balance.toLocaleString()}
@@ -119,7 +130,7 @@ export default function Dashboard() {
 
             <div className="p-6">
               <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <Users size={14} strokeWidth={1.6} /> Por Cobrar
+                <Users size={14} strokeWidth={1.6} /> Por Cobrar (actual)
               </div>
               <p className="font-display text-3xl text-brand-accent">
                 L. {resumen.por_cobrar.toLocaleString()}
@@ -129,7 +140,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Gráfico de Ventas */}
-            <div className={`${CARD} lg:col-span-2 p-7`}>
+            <div className={`${CARD} lg:col-span-2 p-5 sm:p-7`}>
               <div className="flex items-center justify-between mb-8">
                 <h3 className="font-display text-lg text-[#201c17]">Ventas por Mes</h3>
                 <Link href="/dashboard/reportes" className="text-xs text-[#8a8175] hover:text-brand-accent flex items-center gap-1 transition-colors uppercase tracking-wide">
@@ -163,7 +174,7 @@ export default function Dashboard() {
             </div>
 
             {/* Alertas de Stock Bajo */}
-            <div className={`${CARD} p-7`}>
+            <div className={`${CARD} p-5 sm:p-7`}>
               <div className="flex items-center gap-2 mb-5">
                 <AlertTriangle className="text-brand-accent" size={17} strokeWidth={1.6} />
                 <h3 className="font-display text-lg text-[#201c17]">Stock Bajo</h3>
@@ -199,7 +210,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Pedidos Recientes */}
-            <div className={`${CARD} p-7`}>
+            <div className={`${CARD} p-5 sm:p-7`}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="text-[#8a8175]" size={17} strokeWidth={1.6} />
@@ -230,7 +241,7 @@ export default function Dashboard() {
             </div>
 
             {/* Facturas Pendientes */}
-            <div className={`${CARD} p-7`}>
+            <div className={`${CARD} p-5 sm:p-7`}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <FileText className="text-[#8a8175]" size={17} strokeWidth={1.6} />

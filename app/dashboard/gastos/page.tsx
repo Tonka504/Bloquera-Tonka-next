@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Search, X, AlertCircle, Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
-import Link from 'next/link';
 import { getGastos, crearGastoAction, eliminarGastoAction } from '../../actions';
+import RangoFechas from '../../components/RangoFechas';
+import { rangoMesActual } from '../../../lib/dates';
 
 const CATEGORIAS = ['Materia Prima', 'Mano de Obra', 'Transporte', 'Servicios', 'Otro'];
 
@@ -13,6 +14,9 @@ export default function GastosPage() {
   const [gastosFiltrados, setGastosFiltrados] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
+  const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
+  const [fechaDesde, setFechaDesde] = useState(desdeInicial);
+  const [fechaHasta, setFechaHasta] = useState(hastaInicial);
   const [showModal, setShowModal] = useState(false);
   const [showEliminarModal, setShowEliminarModal] = useState(false);
   const [gastoAEliminar, setGastoAEliminar] = useState<any>(null);
@@ -20,7 +24,7 @@ export default function GastosPage() {
 
   const cargarGastos = async () => {
     setLoading(true);
-    const result = await getGastos();
+    const result = await getGastos(fechaDesde, fechaHasta);
     if (result.success) {
       setGastos(result.data || []);
       setGastosFiltrados(result.data || []);
@@ -32,7 +36,7 @@ export default function GastosPage() {
 
   useEffect(() => {
     cargarGastos();
-  }, []);
+  }, [fechaDesde, fechaHasta]);
 
   useEffect(() => {
     let filtrados = gastos;
@@ -109,28 +113,17 @@ export default function GastosPage() {
 
   const totalGastos = gastosFiltrados.reduce((sum, g) => sum + Number(g.monto), 0);
 
-  const mesActualLabel = new Date()
-    .toLocaleDateString('es-HN', { month: 'long', year: 'numeric' })
-    .replace(/^\w/, (c) => c.toUpperCase());
-
   return (
-    <div className="px-10 py-9">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Operativo</p>
           <h1 className="font-display text-3xl text-[#201c17]">Gastos</h1>
-          <p className="text-xs text-[#8a8175] mt-2">
-            Mostrando {mesActualLabel}. Los meses anteriores quedan guardados y puedes verlos en{' '}
-            <Link href="/dashboard/reportes" className="text-brand-accent hover:underline">
-              Reportes
-            </Link>
-            .
-          </p>
         </div>
         <div className="flex items-center gap-5">
           <div className="text-right">
-            <p className="text-[10px] text-[#8a8175] uppercase tracking-wide">Total del mes</p>
+            <p className="text-[10px] text-[#8a8175] uppercase tracking-wide">Total filtrado</p>
             <p className="font-display text-xl text-[#201c17]">L. {totalGastos.toLocaleString()}</p>
           </div>
           <button
@@ -144,7 +137,7 @@ export default function GastosPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#c2b8a1]" size={16} strokeWidth={1.6} />
           <input
@@ -165,6 +158,12 @@ export default function GastosPage() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
+        <RangoFechas
+          fechaDesde={fechaDesde}
+          fechaHasta={fechaHasta}
+          onFechaDesde={setFechaDesde}
+          onFechaHasta={setFechaHasta}
+        />
       </div>
 
       {/* Tabla */}

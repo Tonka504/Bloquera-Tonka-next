@@ -50,7 +50,7 @@ export default function ConfigPage() {
 
   if (loading) {
     return (
-      <div className="px-10 py-9 flex items-center justify-center gap-3 text-[#8a8175]">
+      <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 flex items-center justify-center gap-3 text-[#8a8175]">
         <Loader2 className="animate-spin" size={20} />
         Cargando configuración...
       </div>
@@ -58,13 +58,13 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="px-10 py-9 max-w-3xl">
-      <div className="mb-10">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 max-w-3xl">
+      <div className="mb-8 lg:mb-10">
         <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Ajustes</p>
         <h1 className="font-display text-3xl text-[#201c17]">Configuración</h1>
       </div>
 
-      <div className="border border-brand-line p-9 space-y-10">
+      <div className="border border-brand-line p-5 sm:p-9 space-y-10">
 
         {/* Producción */}
         <div>

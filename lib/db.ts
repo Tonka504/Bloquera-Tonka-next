@@ -3,10 +3,11 @@ import postgres from 'postgres';
 
 const connectionString = process.env.DATABASE_URL!;
 
-// Los proveedores de Postgres en producción (Neon, Vercel Postgres, etc.)
-// exigen SSL. La base local de pruebas (Docker) no lo tiene configurado.
-const isLocalDb = /localhost|127\.0\.0\.1/.test(connectionString);
+// La BD local (Docker) no tiene SSL; producción sí lo requiere.
+const isLocal =
+  connectionString.includes('localhost') ||
+  connectionString.includes('127.0.0.1');
 
 export const sql = postgres(connectionString, {
-  ssl: isLocalDb ? false : 'require',
+  ssl: isLocal ? false : 'require',
 });
