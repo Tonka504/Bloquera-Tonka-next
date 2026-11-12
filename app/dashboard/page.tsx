@@ -2,38 +2,87 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
-  Users,
+  Scale,
+  Wallet,
   AlertTriangle,
-  Package,
-  FileText,
-  ShoppingCart,
-  ArrowRight,
-  Loader2,
+  ClipboardList,
+  Truck,
+  Factory,
+  Warehouse,
+  Banknote,
+  HandCoins,
+  ChartColumn,
+  ReceiptText,
+  Shovel,
 } from 'lucide-react';
-import { getDashboardResumen } from '../actions';
-import Link from 'next/link';
+import { getDashboardResumen, type DashboardResumen } from '../actions';
 import RangoFechas from '../components/RangoFechas';
+import {
+  Cargando,
+  EncabezadoPagina,
+  IconoBloque,
+  IconoCemento,
+  IconoPilaBloques,
+  IndicadorConsola,
+  Panel,
+} from '../components/ui';
 import { rangoMesActual, formatRangoLegible } from '../../lib/dates';
+import { dinero, entero, hoyLocal, nombreBloque } from './seguimiento/formato';
 
-const CARD = 'bg-white border border-brand-line';
+const STOCK_MINIMO = 100;
+
+const RESUMEN_VACIO: DashboardResumen = {
+  ventas: 0,
+  gastos: 0,
+  balance: 0,
+  por_cobrar: 0,
+  pedidosRecientes: [],
+  ventasPorMes: [],
+  stockBajo: [],
+  facturasPendientes: [],
+  saldosSeguimiento: [],
+  operacion: {
+    produccionHoy: 0,
+    produccionPeriodo: 0,
+    bloquesFabricados: 0,
+    inventarioBloques: 0,
+    inventarioPorTipo: [],
+    cementoBolsas: 0,
+    arenaM3: 0,
+    ventasHoy: 0,
+    pedidosPendientes: 0,
+    bloquesPorEntregar: 0,
+    dineroRecibido: 0,
+  },
+};
+
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const formatMes = (mesStr: string) => {
+  const mes = Number(String(mesStr).slice(5, 7));
+  return MESES[mes - 1] || mesStr;
+};
+
+/** Rótulo de sección con placa metálica. */
+function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="flex items-center gap-3 mb-3">
+        <span className="w-2 h-2 rotate-45 bg-safety" />
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-soft">{titulo}</h2>
+        <span className="flex-1 h-px bg-linear-to-r from-[#bdbcb5] to-transparent" />
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [resumen, setResumen] = useState({
-    ventas: 0,
-    gastos: 0,
-    balance: 0,
-    por_cobrar: 0,
-    pedidosRecientes: [],
-    ventasPorMes: [],
-    stockBajo: [],
-    facturasPendientes: [],
-    saldosSeguimiento: [] as { id: number; cliente: string; saldo_pendiente: number }[],
-  });
+  const [user, setUser] = useState<unknown>(null);
+  const [resumen, setResumen] = useState<DashboardResumen>(RESUMEN_VACIO);
   const [loading, setLoading] = useState(true);
   const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
   const [fechaDesde, setFechaDesde] = useState(desdeInicial);
@@ -46,256 +95,352 @@ export default function Dashboard() {
       router.push('/');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lectura única de localStorage al montar
     setUser(JSON.parse(savedUser));
   }, [router]);
 
   useEffect(() => {
-    if (user) cargarDatos();
+    if (!user) return;
+    let activo = true;
+    getDashboardResumen(fechaDesde, fechaHasta, hoyLocal()).then((result) => {
+      if (!activo) return;
+      if (result.data) setResumen({ ...RESUMEN_VACIO, ...result.data });
+      setLoading(false);
+    });
+    return () => {
+      activo = false;
+    };
   }, [user, fechaDesde, fechaHasta]);
 
-  const cargarDatos = async () => {
+  const cambiarDesde = (v: string) => {
     setLoading(true);
-    const result: any = await getDashboardResumen(fechaDesde, fechaHasta);
-    if (result.data) {
-      setResumen(result.data);
-    }
-    setLoading(false);
+    setFechaDesde(v);
+  };
+  const cambiarHasta = (v: string) => {
+    setLoading(true);
+    setFechaHasta(v);
   };
 
   if (!user) return null;
 
-  const maxVentas = Math.max(...resumen.ventasPorMes.map((v: any) => Number(v.total)), 1);
-
-  const formatMes = (mesStr: string) => {
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const fechaStr = mesStr.length === 7 ? mesStr + '-01' : mesStr;
-    const date = new Date(fechaStr);
-    return meses[date.getMonth()] || mesStr;
-  };
+  const op = resumen.operacion;
+  const maxVentas = Math.max(...resumen.ventasPorMes.map((v) => Number(v.total)), 1);
+  const periodo = formatRangoLegible(fechaDesde, fechaHasta);
+  const tiposBajos = op.inventarioPorTipo.filter((t) => t.cantidad < STOCK_MINIMO);
+  const maxTipo = Math.max(...op.inventarioPorTipo.map((t) => t.cantidad), STOCK_MINIMO * 5, 1);
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8 lg:mb-10">
-        <div>
-          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Resumen general</p>
-          <h1 className="font-display text-3xl text-[#201c17]">Tu bloquera, de un vistazo</h1>
-          {fechaDesde && fechaHasta && (
-            <p className="text-sm text-[#8a8175] mt-1">
-              Mostrando el periodo del {formatRangoLegible(fechaDesde, fechaHasta)}
-            </p>
-          )}
+      <EncabezadoPagina etiqueta="Centro de operaciones" titulo="Panel de planta" icono={Factory}>
+        <div className="panel px-4 py-3">
+          <RangoFechas
+            fechaDesde={fechaDesde}
+            fechaHasta={fechaHasta}
+            onFechaDesde={cambiarDesde}
+            onFechaHasta={cambiarHasta}
+          />
         </div>
-        <RangoFechas
-          fechaDesde={fechaDesde}
-          fechaHasta={fechaHasta}
-          onFechaDesde={setFechaDesde}
-          onFechaHasta={setFechaHasta}
-        />
-      </div>
+      </EncabezadoPagina>
+
+      {periodo && (
+        <p className="-mt-5 mb-7 text-sm text-muted">
+          Mostrando el periodo del <span className="font-semibold text-ink-soft">{periodo}</span>
+        </p>
+      )}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-24 text-[#8a8175]">
-          <Loader2 className="animate-spin" size={20} />
-          Cargando datos...
+        <div className="flex items-center justify-center py-24">
+          <Cargando texto="Cargando datos de la planta..." />
         </div>
       ) : (
-        <>
-          {/* Tarjetas de Resumen */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 border border-brand-line divide-y md:divide-y-0 md:divide-x divide-brand-line mb-10">
-            <div className="p-6">
-              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <TrendingUp size={14} strokeWidth={1.6} /> Ventas del Periodo
-              </div>
-              <p className="font-display text-3xl text-[#201c17]">
-                L. {resumen.ventas.toLocaleString()}
-              </p>
+        <div className="space-y-9">
+          {/* ---------------- Consola de operaciones ---------------- */}
+          <Seccion titulo="Producción">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <IndicadorConsola
+                etiqueta="Producción del día"
+                valor={`${entero(op.produccionHoy)} und`}
+                detalle="Bloques registrados hoy"
+                icono={IconoPilaBloques}
+                tono="safety"
+                href="/dashboard/inventario"
+              />
+              <IndicadorConsola
+                etiqueta="Producción del periodo"
+                valor={`${entero(op.produccionPeriodo)} und`}
+                detalle={periodo || 'Periodo seleccionado'}
+                icono={Factory}
+                tono="machine"
+                retraso={0.05}
+              />
+              <IndicadorConsola
+                etiqueta="Total bloques fabricados"
+                valor={`${entero(op.bloquesFabricados)} und`}
+                detalle="Histórico de producción"
+                icono={IconoBloque}
+                tono="steel"
+                retraso={0.1}
+              />
             </div>
+          </Seccion>
 
-            <div className="p-6">
-              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <TrendingDown size={14} strokeWidth={1.6} /> Gastos del Periodo
-              </div>
-              <p className="font-display text-3xl text-[#201c17]">
-                L. {resumen.gastos.toLocaleString()}
-              </p>
+          <Seccion titulo="Inventario y logística">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <IndicadorConsola
+                etiqueta="Inventario disponible"
+                valor={`${entero(op.inventarioBloques)} und`}
+                detalle={
+                  op.inventarioPorTipo.length
+                    ? op.inventarioPorTipo.map((t) => `${t.tipo.replace('bloque_de_', '')} ${entero(t.cantidad)}`).join(' · ')
+                    : 'Sin datos de inventario'
+                }
+                icono={Warehouse}
+                tono={tiposBajos.length ? 'alert' : 'ok'}
+                href="/dashboard/inventario"
+              />
+              <IndicadorConsola
+                etiqueta="Pedidos pendientes"
+                valor={entero(op.pedidosPendientes)}
+                detalle="Pedidos + Seguimiento con bloques por entregar"
+                icono={ClipboardList}
+                tono="machine"
+                href="/dashboard/pedidos"
+                retraso={0.05}
+              />
+              <IndicadorConsola
+                etiqueta="Entregas pendientes"
+                valor={`${entero(op.bloquesPorEntregar)} und`}
+                detalle="Bloques que faltan por entregar"
+                icono={Truck}
+                tono="safety"
+                href="/dashboard/seguimiento"
+                retraso={0.1}
+              />
             </div>
+          </Seccion>
 
-            <div className="p-6">
-              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <DollarSign size={14} strokeWidth={1.6} /> Balance del Periodo
-              </div>
-              <p className={`font-display text-3xl ${resumen.balance >= 0 ? 'text-[#201c17]' : 'text-red-800'}`}>
-                L. {resumen.balance.toLocaleString()}
-              </p>
+          <Seccion titulo="Caja y cobros">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <IndicadorConsola
+                etiqueta="Ventas del día"
+                valor={dinero(op.ventasHoy)}
+                detalle="Despachos y entregas de hoy"
+                icono={Banknote}
+                tono="ok"
+              />
+              <IndicadorConsola
+                etiqueta="Dinero recibido"
+                valor={dinero(op.dineroRecibido)}
+                detalle="Cobrado en el periodo (facturas y abonos)"
+                icono={HandCoins}
+                tono="ok"
+                retraso={0.05}
+              />
+              <IndicadorConsola
+                etiqueta="Saldos pendientes"
+                valor={dinero(resumen.por_cobrar)}
+                detalle="Deuda actual de clientes"
+                icono={Wallet}
+                tono="alert"
+                href="/dashboard/seguimiento"
+                retraso={0.1}
+              />
             </div>
+          </Seccion>
 
-            <div className="p-6">
-              <div className="flex items-center gap-2 text-[#8a8175] text-xs uppercase tracking-[0.1em] mb-2">
-                <Users size={14} strokeWidth={1.6} /> Por Cobrar (actual)
+          {/* ---------------- Finanzas del periodo ---------------- */}
+          <Seccion titulo="Finanzas del periodo">
+            <div className="grid grid-cols-1 md:grid-cols-3 kpi-grid">
+              <div className="p-5 pt-6">
+                <div className="flex items-center gap-2 text-muted text-xs font-semibold uppercase tracking-[0.12em] mb-2">
+                  <TrendingUp size={14} strokeWidth={1.9} className="text-ok" /> Ventas del periodo
+                </div>
+                <p className="font-display text-3xl text-ink tabular-nums">{dinero(resumen.ventas)}</p>
               </div>
-              <p className="font-display text-3xl text-brand-accent">
-                L. {resumen.por_cobrar.toLocaleString()}
-              </p>
+              <div className="p-5 pt-6">
+                <div className="flex items-center gap-2 text-muted text-xs font-semibold uppercase tracking-[0.12em] mb-2">
+                  <TrendingDown size={14} strokeWidth={1.9} className="text-alert" /> Gastos del periodo
+                </div>
+                <p className="font-display text-3xl text-ink tabular-nums">{dinero(resumen.gastos)}</p>
+              </div>
+              <div className="p-5 pt-6">
+                <div className="flex items-center gap-2 text-muted text-xs font-semibold uppercase tracking-[0.12em] mb-2">
+                  <Scale size={14} strokeWidth={1.9} className="text-safety-deep" /> Balance del periodo
+                </div>
+                <p className={`font-display text-3xl tabular-nums ${resumen.balance >= 0 ? 'text-ok-deep' : 'text-alert-deep'}`}>
+                  {dinero(resumen.balance)}
+                </p>
+              </div>
             </div>
-          </div>
+          </Seccion>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {/* Gráfico de Ventas */}
-            <div className={`${CARD} lg:col-span-2 p-5 sm:p-7`}>
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="font-display text-lg text-[#201c17]">Ventas por Mes</h3>
-                <Link href="/dashboard/reportes" className="text-xs text-[#8a8175] hover:text-brand-accent flex items-center gap-1 transition-colors uppercase tracking-wide">
-                  Ver más <ArrowRight size={12} />
-                </Link>
-              </div>
-
+          {/* ---------------- Gráfico + materiales ---------------- */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Panel
+              titulo="Ventas por mes"
+              icono={ChartColumn}
+              accion={{ href: '/dashboard/reportes', texto: 'Ver reportes' }}
+              className="lg:col-span-2"
+            >
               {resumen.ventasPorMes.length === 0 ? (
-                <div className="text-center py-12 text-[#a39a8c] text-sm">No hay datos de ventas</div>
+                <div className="text-center py-12 text-faint text-sm">No hay datos de ventas</div>
               ) : (
-                <div className="flex items-end gap-4 h-44">
-                  {resumen.ventasPorMes.map((item: any, idx: number) => {
-                    const height = Math.max((Number(item.total) / maxVentas) * 100, 5);
-                    return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-3">
-                        <div className="relative w-full flex justify-center">
+                <div className="relative h-56 pt-6">
+                  {/* líneas guía */}
+                  <div className="absolute inset-x-0 top-6 bottom-7 flex flex-col justify-between pointer-events-none">
+                    {[0, 1, 2, 3].map((i) => (
+                      <span key={i} className="h-px bg-[#dddcd5]" />
+                    ))}
+                  </div>
+                  <div className="relative flex items-end gap-3 sm:gap-5 h-full">
+                    {resumen.ventasPorMes.map((item, idx) => {
+                      const height = Math.max((Number(item.total) / maxVentas) * 100, 4);
+                      return (
+                        <div key={idx} className="group flex-1 h-full flex flex-col items-center justify-end gap-2">
+                          <span className="text-[11px] font-semibold text-ink-soft opacity-0 group-hover:opacity-100 transition-opacity tabular-nums whitespace-nowrap">
+                            {dinero(Number(item.total))}
+                          </span>
                           <div
-                            className="w-full max-w-[36px] bg-brand-ink hover:bg-brand-accent transition-colors"
-                            style={{ height: `${height}%`, minHeight: '4px' }}
-                            title={`L. ${Number(item.total).toLocaleString()}`}
+                            className="w-full max-w-[44px] rounded-t-[4px] bg-linear-to-t from-concrete-dark to-cement group-hover:from-safety-deep group-hover:to-safety border border-b-0 border-black/20 shadow-[inset_1px_0_0_rgba(255,255,255,.25)] transition-[height,background] duration-700 ease-out animate-[rise-in_.6s_cubic-bezier(.2,.8,.2,1)_backwards]"
+                            style={{ height: `${height}%`, animationDelay: `${idx * 0.06}s` }}
+                            title={dinero(Number(item.total))}
                           />
+                          <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">{formatMes(item.mes)}</span>
                         </div>
-                        <span className="text-[11px] text-[#8a8175] uppercase tracking-wide">
-                          {formatMes(item.mes)}
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </Panel>
+
+            <Panel titulo="Niveles de material" icono={Warehouse} accion={{ href: '/dashboard/inventario', texto: 'Inventario' }}>
+              <div className="space-y-4">
+                {op.inventarioPorTipo.map((t) => {
+                  const bajo = t.cantidad < STOCK_MINIMO;
+                  return (
+                    <div key={t.tipo}>
+                      <div className="flex items-center justify-between text-sm mb-1.5">
+                        <span className="flex items-center gap-2 text-ink-soft">
+                          <IconoBloque size={15} className="text-faint" /> {nombreBloque(t.tipo)}
+                        </span>
+                        <span className={`font-semibold tabular-nums ${bajo ? 'text-alert-deep' : 'text-ink'}`}>
+                          {entero(t.cantidad)} und
                         </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Alertas de Stock Bajo */}
-            <div className={`${CARD} p-5 sm:p-7`}>
-              <div className="flex items-center gap-2 mb-5">
-                <AlertTriangle className="text-brand-accent" size={17} strokeWidth={1.6} />
-                <h3 className="font-display text-lg text-[#201c17]">Stock Bajo</h3>
-              </div>
-
-              {resumen.stockBajo.length === 0 ? (
-                <div className="text-center py-8 text-[#a39a8c] text-sm">
-                  <Package size={28} strokeWidth={1.4} className="mx-auto mb-2 text-[#d9d2c3]" />
-                  Todo el stock está en niveles normales
-                </div>
-              ) : (
-                <div className="space-y-0 divide-y divide-brand-line">
-                  {resumen.stockBajo.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between py-3">
-                      <span className="text-sm text-[#201c17]">
-                        {item.tipo.replace('bloque_de_', 'Bloque de ').replace('"', '"')}
-                      </span>
-                      <span className="text-sm font-medium text-brand-accent">
-                        {item.cantidad} und
-                      </span>
+                      <div className="progress-track h-2">
+                        <div
+                          className={`progress-fill ${bajo ? 'bg-alert' : 'bg-concrete-dark'}`}
+                          style={{ width: `${Math.max((t.cantidad / maxTipo) * 100, 2)}%` }}
+                        />
+                      </div>
                     </div>
-                  ))}
-                  <Link
-                    href="/dashboard/inventario"
-                    className="block text-center text-xs text-[#8a8175] hover:text-brand-accent uppercase tracking-wide pt-4 transition-colors"
-                  >
-                    Ir a Inventario →
-                  </Link>
+                  );
+                })}
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="rounded-[6px] border border-line bg-concrete-50 px-3 py-2.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      <IconoCemento size={13} /> Cemento
+                    </div>
+                    <p className="font-display text-xl text-ink mt-0.5 tabular-nums">
+                      {entero(op.cementoBolsas)} <span className="text-xs font-sans font-normal normal-case text-muted">bolsas</span>
+                    </p>
+                  </div>
+                  <div className="rounded-[6px] border border-line bg-concrete-50 px-3 py-2.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      <Shovel size={13} strokeWidth={1.9} /> Arena
+                    </div>
+                    <p className="font-display text-xl text-ink mt-0.5 tabular-nums">
+                      {op.arenaM3.toFixed(2)} <span className="text-xs font-sans font-normal normal-case text-muted">m³</span>
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {resumen.stockBajo.length > 0 && (
+                  <div className="relative overflow-hidden rounded-[6px] border border-alert/40 bg-[#fbe7e6] pl-5 pr-3 py-2.5">
+                    <span className="absolute inset-y-0 left-0 w-2 bg-[image:var(--tx-hazard)]" />
+                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-alert-deep">
+                      <AlertTriangle size={14} strokeWidth={2} /> Stock bajo
+                    </p>
+                    <p className="text-sm text-ink-soft mt-1">
+                      {resumen.stockBajo.map((s) => `${nombreBloque(s.tipo)}: ${entero(s.cantidad)} und`).join(' · ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Panel>
           </div>
 
+          {/* ---------------- Listados ---------------- */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Pedidos Recientes */}
-            <div className={`${CARD} p-5 sm:p-7`}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="text-[#8a8175]" size={17} strokeWidth={1.6} />
-                  <h3 className="font-display text-lg text-[#201c17]">Pedidos Recientes</h3>
-                </div>
-                <Link href="/dashboard/pedidos" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
-                  Ver todos
-                </Link>
-              </div>
-
+            <Panel
+              titulo="Pedidos recientes"
+              icono={ClipboardList}
+              accion={{ href: '/dashboard/pedidos', texto: 'Ver todos' }}
+              cuerpo="px-5 sm:px-6 py-2"
+            >
               {resumen.pedidosRecientes.length === 0 ? (
-                <div className="text-center py-8 text-[#a39a8c] text-sm">No hay pedidos recientes</div>
+                <div className="text-center py-8 text-faint text-sm">No hay pedidos recientes</div>
               ) : (
-                <div className="divide-y divide-brand-line">
-                  {resumen.pedidosRecientes.map((pedido: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm text-[#201c17]">{pedido.cliente}</p>
-                        <p className="text-xs text-[#8a8175] mt-0.5">{pedido.producto} — {pedido.cantidad} und</p>
+                <div className="divide-y divide-line">
+                  {resumen.pedidosRecientes.map((pedido, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{pedido.cliente}</p>
+                        <p className="text-xs text-muted mt-0.5">
+                          {pedido.producto} — {entero(pedido.cantidad)} und
+                        </p>
                       </div>
-                      <span className="text-[11px] text-brand-accent uppercase tracking-wide">
-                        {pedido.estado}
-                      </span>
+                      <span className="badge badge-pending">{pedido.estado}</span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Panel>
 
-            {/* Facturas Pendientes */}
-            <div className={`${CARD} p-5 sm:p-7`}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <FileText className="text-[#8a8175]" size={17} strokeWidth={1.6} />
-                  <h3 className="font-display text-lg text-[#201c17]">Saldos por Cobrar</h3>
-                </div>
-                <Link href="/dashboard/seguimiento" className="text-xs text-[#8a8175] hover:text-brand-accent transition-colors uppercase tracking-wide">
-                  Ver todos
-                </Link>
-              </div>
-
-              {/* Pedidos de Seguimiento con saldo pendiente */}
-              {(resumen.saldosSeguimiento || []).length > 0 && (
-                <div className="divide-y divide-brand-line mb-2">
-                  {(resumen.saldosSeguimiento || []).map((s) => (
+            <Panel
+              titulo="Saldos por cobrar"
+              icono={ReceiptText}
+              accion={{ href: '/dashboard/seguimiento', texto: 'Ver todos' }}
+              cuerpo="px-5 sm:px-6 py-2"
+            >
+              {resumen.saldosSeguimiento.length === 0 && resumen.facturasPendientes.length === 0 ? (
+                <div className="text-center py-8 text-faint text-sm">No hay saldos pendientes</div>
+              ) : (
+                <div className="divide-y divide-line">
+                  {/* Pedidos de Seguimiento con saldo pendiente */}
+                  {resumen.saldosSeguimiento.map((s) => (
                     <Link
                       key={`seg-${s.id}`}
                       href={`/dashboard/seguimiento/${s.id}`}
-                      className="flex items-center justify-between py-3 hover:bg-[#faf8f4] transition-colors"
+                      className="flex items-center justify-between gap-3 py-3 -mx-2 px-2 rounded-[6px] hover:bg-[#fdf3e6] transition-colors"
                     >
-                      <div>
-                        <p className="text-sm text-[#201c17]">{s.cliente}</p>
-                        <p className="text-xs text-[#8a8175] mt-0.5">Pedido en seguimiento #{s.id}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{s.cliente}</p>
+                        <p className="text-xs text-muted mt-0.5">Pedido en seguimiento #{s.id}</p>
                       </div>
-                      <span className="text-sm font-medium text-red-800">
-                        L. {Number(s.saldo_pendiente).toLocaleString()}
+                      <span className="text-sm font-semibold text-alert-deep tabular-nums whitespace-nowrap">
+                        {dinero(s.saldo_pendiente)}
                       </span>
                     </Link>
                   ))}
-                </div>
-              )}
-
-              {resumen.facturasPendientes.length === 0 ? (
-                (resumen.saldosSeguimiento || []).length === 0 && (
-                  <div className="text-center py-8 text-[#a39a8c] text-sm">No hay saldos pendientes</div>
-                )
-              ) : (
-                <div className="divide-y divide-brand-line">
-                  {resumen.facturasPendientes.map((factura: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm text-[#201c17]">{factura.cliente}</p>
-                        <p className="text-xs text-[#8a8175] mt-0.5">Factura #{factura.num_factura}</p>
+                  {resumen.facturasPendientes.map((factura, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{factura.cliente}</p>
+                        <p className="text-xs text-muted mt-0.5">Factura #{factura.num_factura}</p>
                       </div>
-                      <span className="text-sm font-medium text-red-800">
-                        L. {Number(factura.saldo_pendiente).toLocaleString()}
+                      <span className="text-sm font-semibold text-alert-deep tabular-nums whitespace-nowrap">
+                        {dinero(Number(factura.saldo_pendiente))}
                       </span>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Panel>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

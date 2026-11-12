@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Plus, X, Loader2, Truck, Wallet, Printer, Package } from 'lucide-react';
+import { ArrowLeft, Plus, X, Truck, Wallet, Printer, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getPedidoSeguimientoDetalle,
@@ -15,25 +15,26 @@ import {
 import { generateEntregaPDF, generateAbonoPDF } from '../../../../lib/generateComprobantesPDF';
 import { METODOS_PAGO, dinero, entero, fechaCorta, hoyLocal, nombreBloque, estiloEstado } from '../formato';
 
+import { Cargando } from '../../../components/ui';
 const inputCls =
-  'w-full border-0 border-b border-brand-line px-0 py-2.5 text-base text-[#201c17] placeholder:text-[#c2b8a1] focus:outline-none focus:border-brand-accent transition-colors bg-white';
-const labelCls = 'block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5';
-const thCls = 'px-5 py-3 text-[11px] font-medium text-[#8a8175] uppercase tracking-[0.1em]';
-const sectionTitleCls = 'text-xs font-medium text-[#8a8175] uppercase tracking-[0.15em]';
+  'field w-full py-2.5 text-base text-ink';
+const labelCls = 'block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5';
+const thCls = 'px-5 py-3 text-[11px] font-medium text-muted uppercase tracking-[0.1em]';
+const sectionTitleCls = 'text-xs font-medium text-muted uppercase tracking-[0.15em]';
 
 function Dato({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] text-[#8a8175] uppercase tracking-[0.12em] mb-1">{label}</p>
-      <div className="text-[#201c17]">{children}</div>
+      <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">{label}</p>
+      <div className="text-ink">{children}</div>
     </div>
   );
 }
 
-function Kpi({ label, value, tone = 'text-[#201c17]' }: { label: string; value: string; tone?: string }) {
+function Kpi({ label, value, tone = 'text-ink' }: { label: string; value: string; tone?: string }) {
   return (
     <div className="px-6 py-5">
-      <p className="text-[11px] text-[#8a8175] uppercase tracking-[0.12em] mb-1">{label}</p>
+      <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">{label}</p>
       <p className={`font-display text-2xl ${tone}`}>{value}</p>
     </div>
   );
@@ -78,18 +79,17 @@ export default function PedidoSeguimientoPage() {
 
   if (loading) {
     return (
-      <div className="px-10 py-24 flex items-center justify-center gap-2 text-[#a39a8c]">
-        <Loader2 className="animate-spin" size={18} /> Cargando pedido...
-      </div>
+      <div className="px-10 py-24 flex items-center justify-center gap-2 text-faint">
+        <Cargando texto="Cargando pedido..." /></div>
     );
   }
 
   if (error || !detalle) {
     return (
       <div className="px-10 py-24 text-center">
-        <Package size={32} strokeWidth={1.4} className="mx-auto mb-3 text-[#d9d2c3]" />
-        <p className="text-[#8a8175] mb-6">{error || 'Pedido no encontrado'}</p>
-        <Link href="/dashboard/seguimiento" className="text-sm text-brand-accent hover:underline">
+        <Package size={32} strokeWidth={1.4} className="mx-auto mb-3 text-faint-2" />
+        <p className="text-muted mb-6">{error || 'Pedido no encontrado'}</p>
+        <Link href="/dashboard/seguimiento" className="text-sm text-safety-deep hover:underline">
           Volver a Seguimiento
         </Link>
       </div>
@@ -172,16 +172,16 @@ export default function PedidoSeguimientoPage() {
       {/* Header */}
       <Link
         href="/dashboard/seguimiento"
-        className="inline-flex items-center gap-1.5 text-xs text-[#8a8175] hover:text-brand-accent transition-colors mb-5"
+        className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-safety-deep transition-colors mb-5"
       >
         <ArrowLeft size={14} /> Todos los pedidos
       </Link>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-9">
         <div>
-          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Pedido #{pedido.id}</p>
+          <p className="text-xs text-muted uppercase tracking-[0.15em] mb-1">Pedido #{pedido.id}</p>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-display text-3xl text-[#201c17]">{pedido.cliente}</h1>
-            <span className={`inline-block px-2.5 py-1 text-[11px] uppercase tracking-wide border ${estiloEstado(pedido.estado)}`}>
+            <h1 className="font-display text-3xl text-ink">{pedido.cliente}</h1>
+            <span className={`badge ${estiloEstado(pedido.estado)}`}>
               {pedido.estado}
             </span>
           </div>
@@ -191,7 +191,7 @@ export default function PedidoSeguimientoPage() {
             onClick={abrirEntrega}
             disabled={pedido.cantidad_pendiente === 0}
             title={pedido.cantidad_pendiente === 0 ? 'El pedido ya fue entregado completo' : undefined}
-            className="flex items-center gap-2 bg-brand-primary hover:bg-brand-ink-soft disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 transition-colors text-sm tracking-wide"
+            className="btn btn-primary flex items-center gap-2 px-5 py-2.5 text-sm tracking-wide"
           >
             <Plus size={16} /> Agregar entrega
           </button>
@@ -199,7 +199,7 @@ export default function PedidoSeguimientoPage() {
             onClick={abrirAbono}
             disabled={pedido.saldo_pendiente <= 0}
             title={pedido.saldo_pendiente <= 0 ? 'El pedido ya está pagado' : undefined}
-            className="flex items-center gap-2 border border-brand-primary text-[#201c17] hover:bg-[#faf8f4] disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 transition-colors text-sm tracking-wide"
+            className="flex items-center gap-2 border border-brand-primary text-ink hover:bg-concrete-50 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 transition-colors text-sm tracking-wide"
           >
             <Plus size={16} /> Registrar abono
           </button>
@@ -209,7 +209,7 @@ export default function PedidoSeguimientoPage() {
       {/* INFORMACIÓN GENERAL */}
       <section className="mb-9">
         <h2 className={`${sectionTitleCls} mb-3`}>Información general</h2>
-        <div className="border border-brand-line px-6 py-5 grid grid-cols-2 md:grid-cols-5 gap-6">
+        <div className="panel px-6 py-5 grid grid-cols-2 md:grid-cols-5 gap-6">
           <Dato label="N.° de pedido">#{pedido.id}</Dato>
           <Dato label="Cliente">{pedido.cliente}</Dato>
           <Dato label="Fecha">{fechaCorta(pedido.fecha)}</Dato>
@@ -218,7 +218,7 @@ export default function PedidoSeguimientoPage() {
           {pedido.observaciones && (
             <div className="col-span-2 md:col-span-5">
               <Dato label="Observaciones">
-                <span className="text-sm text-[#4a463e] whitespace-pre-line">{pedido.observaciones}</span>
+                <span className="text-sm text-ink-soft whitespace-pre-line">{pedido.observaciones}</span>
               </Dato>
             </div>
           )}
@@ -230,28 +230,28 @@ export default function PedidoSeguimientoPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className={sectionTitleCls}>Resumen de entregas</h2>
-            <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wide border ${estiloEstado(pedido.estado_entrega)}`}>
+            <span className={`badge ${estiloEstado(pedido.estado_entrega)}`}>
               {pedido.estado_entrega}
             </span>
           </div>
-          <div className="border border-brand-line">
+          <div className="panel">
             <div className="grid grid-cols-3 divide-x divide-brand-line">
               <Kpi label="Solicitados" value={entero(pedido.cantidad_total)} />
-              <Kpi label="Entregados" value={entero(pedido.cantidad_entregada)} tone="text-emerald-800" />
+              <Kpi label="Entregados" value={entero(pedido.cantidad_entregada)} tone="text-ok-deep" />
               <Kpi
                 label="Pendientes"
                 value={entero(pedido.cantidad_pendiente)}
-                tone={pedido.cantidad_pendiente > 0 ? 'text-brand-accent' : 'text-[#201c17]'}
+                tone={pedido.cantidad_pendiente > 0 ? 'text-safety-deep' : 'text-ink'}
               />
             </div>
             <div className="px-6 pb-5 pt-1">
-              <div className="flex justify-between text-xs text-[#8a8175] mb-1.5">
+              <div className="flex justify-between text-xs text-muted mb-1.5">
                 <span>Avance de entrega</span>
-                <span className="text-[#201c17] font-medium">{pedido.porcentaje_entrega}%</span>
+                <span className="text-ink font-medium">{pedido.porcentaje_entrega}%</span>
               </div>
-              <div className="h-2.5 bg-[#efeae0]">
+              <div className="progress-track h-3">
                 <div
-                  className={`h-full transition-all ${pedido.cantidad_pendiente === 0 ? 'bg-emerald-700' : 'bg-brand-accent'}`}
+                  className={`progress-fill ${pedido.cantidad_pendiente === 0 ? 'bg-ok' : 'bg-safety'}`}
                   style={{ width: `${pedido.porcentaje_entrega}%` }}
                 />
               </div>
@@ -263,30 +263,30 @@ export default function PedidoSeguimientoPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className={sectionTitleCls}>Resumen financiero</h2>
-            <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wide border ${estiloEstado(pedido.estado_pago)}`}>
+            <span className={`badge ${estiloEstado(pedido.estado_pago)}`}>
               Pago: {pedido.estado_pago}
             </span>
           </div>
-          <div className="border border-brand-line">
+          <div className="panel">
             <div className="grid grid-cols-3 divide-x divide-brand-line">
               <Kpi label="Total del pedido" value={dinero(pedido.total)} />
-              <Kpi label="Total abonado" value={dinero(pedido.total_abonado)} tone="text-emerald-800" />
+              <Kpi label="Total abonado" value={dinero(pedido.total_abonado)} tone="text-ok-deep" />
               <Kpi
                 label="Saldo pendiente"
                 value={dinero(pedido.saldo_pendiente)}
-                tone={pedido.saldo_pendiente > 0 ? 'text-red-800' : 'text-[#201c17]'}
+                tone={pedido.saldo_pendiente > 0 ? 'text-alert-deep' : 'text-ink'}
               />
             </div>
             <div className="px-6 pb-5 pt-1">
-              <div className="flex justify-between text-xs text-[#8a8175] mb-1.5">
+              <div className="flex justify-between text-xs text-muted mb-1.5">
                 <span>Avance de pago</span>
-                <span className="text-[#201c17] font-medium">
+                <span className="text-ink font-medium">
                   {pedido.total > 0 ? Math.min(Math.round((pedido.total_abonado / pedido.total) * 1000) / 10, 100) : 0}%
                 </span>
               </div>
-              <div className="h-2.5 bg-[#efeae0]">
+              <div className="progress-track h-3">
                 <div
-                  className={`h-full transition-all ${pedido.saldo_pendiente <= 0 ? 'bg-emerald-700' : 'bg-[#201c17]'}`}
+                  className={`progress-fill ${pedido.saldo_pendiente <= 0 ? 'bg-ok' : 'bg-concrete-dark'}`}
                   style={{
                     width: `${pedido.total > 0 ? Math.min((pedido.total_abonado / pedido.total) * 100, 100) : 0}%`,
                   }}
@@ -300,8 +300,8 @@ export default function PedidoSeguimientoPage() {
       {/* HISTORIAL DE ENTREGAS */}
       <section className="mb-9">
         <h2 className={`${sectionTitleCls} mb-3`}>Historial de entregas</h2>
-        <div className="border border-brand-line overflow-x-auto">
-          <table className="w-full">
+        <div className="panel overflow-x-auto">
+          <table className="table-industrial w-full">
             <thead>
               <tr className="border-b border-brand-line">
                 <th className={`${thCls} text-left`}>#</th>
@@ -316,24 +316,24 @@ export default function PedidoSeguimientoPage() {
             <tbody className="divide-y divide-brand-line">
               {entregas.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-[#a39a8c] text-sm">
-                    <Truck size={26} strokeWidth={1.4} className="mx-auto mb-2 text-[#d9d2c3]" />
+                  <td colSpan={7} className="text-center py-10 text-faint text-sm">
+                    <Truck size={26} strokeWidth={1.4} className="mx-auto mb-2 text-faint-2" />
                     Todavía no se ha realizado ninguna entrega
                   </td>
                 </tr>
               ) : (
                 entregas.map((e, i) => (
-                  <tr key={e.id} className="hover:bg-[#faf8f4] transition-colors">
-                    <td className="px-5 py-3.5 text-[#8a8175] text-sm">{i + 1}</td>
-                    <td className="px-5 py-3.5 text-[#201c17] whitespace-nowrap">{fechaCorta(e.fecha)}</td>
-                    <td className="px-5 py-3.5 text-right text-[#201c17]">{entero(e.cantidad)}</td>
-                    <td className="px-5 py-3.5 text-right text-[#4a463e]">{dinero(e.precio_unitario)}</td>
-                    <td className="px-5 py-3.5 text-right font-medium text-[#201c17] whitespace-nowrap">{dinero(e.total)}</td>
-                    <td className="px-5 py-3.5 text-sm text-[#4a463e]">{e.observaciones || '—'}</td>
+                  <tr key={e.id} className="hover:bg-concrete-50 transition-colors">
+                    <td className="px-5 py-3.5 text-muted text-sm">{i + 1}</td>
+                    <td className="px-5 py-3.5 text-ink whitespace-nowrap">{fechaCorta(e.fecha)}</td>
+                    <td className="px-5 py-3.5 text-right text-ink">{entero(e.cantidad)}</td>
+                    <td className="px-5 py-3.5 text-right text-ink-soft">{dinero(e.precio_unitario)}</td>
+                    <td className="px-5 py-3.5 text-right font-medium text-ink whitespace-nowrap">{dinero(e.total)}</td>
+                    <td className="px-5 py-3.5 text-sm text-ink-soft">{e.observaciones || '—'}</td>
                     <td className="px-5 py-3.5 text-center">
                       <button
                         onClick={() => generateEntregaPDF(pedido, e, entregas)}
-                        className="p-1.5 text-[#8a8175] hover:text-brand-accent transition-colors"
+                        className="btn-icon p-1.5"
                         title="Imprimir comprobante de entrega"
                       >
                         <Printer size={16} strokeWidth={1.6} />
@@ -345,13 +345,13 @@ export default function PedidoSeguimientoPage() {
             </tbody>
             {entregas.length > 0 && (
               <tfoot>
-                <tr className="border-t border-brand-line bg-[#faf8f4]">
-                  <td colSpan={2} className="px-5 py-3 text-xs text-[#8a8175] uppercase tracking-wide">
+                <tr className="border-t border-brand-line bg-concrete-50">
+                  <td colSpan={2} className="px-5 py-3 text-xs text-muted uppercase tracking-wide">
                     Total entregado
                   </td>
-                  <td className="px-5 py-3 text-right font-medium text-[#201c17]">{entero(pedido.cantidad_entregada)}</td>
+                  <td className="px-5 py-3 text-right font-medium text-ink">{entero(pedido.cantidad_entregada)}</td>
                   <td />
-                  <td className="px-5 py-3 text-right font-medium text-[#201c17] whitespace-nowrap">{dinero(totalEntregado)}</td>
+                  <td className="px-5 py-3 text-right font-medium text-ink whitespace-nowrap">{dinero(totalEntregado)}</td>
                   <td colSpan={2} />
                 </tr>
               </tfoot>
@@ -363,8 +363,8 @@ export default function PedidoSeguimientoPage() {
       {/* HISTORIAL DE ABONOS */}
       <section>
         <h2 className={`${sectionTitleCls} mb-3`}>Historial de abonos</h2>
-        <div className="border border-brand-line overflow-x-auto">
-          <table className="w-full">
+        <div className="panel overflow-x-auto">
+          <table className="table-industrial w-full">
             <thead>
               <tr className="border-b border-brand-line">
                 <th className={`${thCls} text-left`}>#</th>
@@ -379,24 +379,24 @@ export default function PedidoSeguimientoPage() {
             <tbody className="divide-y divide-brand-line">
               {abonos.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-[#a39a8c] text-sm">
-                    <Wallet size={26} strokeWidth={1.4} className="mx-auto mb-2 text-[#d9d2c3]" />
+                  <td colSpan={7} className="text-center py-10 text-faint text-sm">
+                    <Wallet size={26} strokeWidth={1.4} className="mx-auto mb-2 text-faint-2" />
                     Todavía no se ha registrado ningún abono
                   </td>
                 </tr>
               ) : (
                 abonos.map((a, i) => (
-                  <tr key={a.id} className="hover:bg-[#faf8f4] transition-colors">
-                    <td className="px-5 py-3.5 text-[#8a8175] text-sm">{i + 1}</td>
-                    <td className="px-5 py-3.5 text-[#201c17] whitespace-nowrap">{fechaCorta(a.fecha)}</td>
-                    <td className="px-5 py-3.5 text-right font-medium text-emerald-800 whitespace-nowrap">{dinero(a.monto)}</td>
-                    <td className="px-5 py-3.5 text-[#4a463e]">{a.metodo_pago}</td>
-                    <td className="px-5 py-3.5 text-sm text-[#4a463e]">{a.comprobante || '—'}</td>
-                    <td className="px-5 py-3.5 text-sm text-[#4a463e]">{a.observaciones || '—'}</td>
+                  <tr key={a.id} className="hover:bg-concrete-50 transition-colors">
+                    <td className="px-5 py-3.5 text-muted text-sm">{i + 1}</td>
+                    <td className="px-5 py-3.5 text-ink whitespace-nowrap">{fechaCorta(a.fecha)}</td>
+                    <td className="px-5 py-3.5 text-right font-medium text-ok-deep whitespace-nowrap">{dinero(a.monto)}</td>
+                    <td className="px-5 py-3.5 text-ink-soft">{a.metodo_pago}</td>
+                    <td className="px-5 py-3.5 text-sm text-ink-soft">{a.comprobante || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-ink-soft">{a.observaciones || '—'}</td>
                     <td className="px-5 py-3.5 text-center">
                       <button
                         onClick={() => generateAbonoPDF(pedido, a, abonos)}
-                        className="p-1.5 text-[#8a8175] hover:text-brand-accent transition-colors"
+                        className="btn-icon p-1.5"
                         title="Imprimir recibo de abono"
                       >
                         <Printer size={16} strokeWidth={1.6} />
@@ -408,11 +408,11 @@ export default function PedidoSeguimientoPage() {
             </tbody>
             {abonos.length > 0 && (
               <tfoot>
-                <tr className="border-t border-brand-line bg-[#faf8f4]">
-                  <td colSpan={2} className="px-5 py-3 text-xs text-[#8a8175] uppercase tracking-wide">
+                <tr className="border-t border-brand-line bg-concrete-50">
+                  <td colSpan={2} className="px-5 py-3 text-xs text-muted uppercase tracking-wide">
                     Total abonado
                   </td>
-                  <td className="px-5 py-3 text-right font-medium text-emerald-800 whitespace-nowrap">
+                  <td className="px-5 py-3 text-right font-medium text-ok-deep whitespace-nowrap">
                     {dinero(pedido.total_abonado)}
                   </td>
                   <td colSpan={4} />
@@ -425,16 +425,16 @@ export default function PedidoSeguimientoPage() {
 
       {/* ========== MODAL AGREGAR ENTREGA ========== */}
       {showEntrega && (
-        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
               <div>
-                <h3 className="font-display text-2xl text-[#201c17]">Agregar entrega</h3>
-                <p className="text-sm text-[#8a8175] mt-1">
+                <h3 className="font-display text-2xl text-ink">Agregar entrega</h3>
+                <p className="text-sm text-muted mt-1">
                   Pedido #{pedido.id} — quedan {entero(pedido.cantidad_pendiente)} bloques por entregar
                 </p>
               </div>
-              <button onClick={() => setShowEntrega(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+              <button onClick={() => setShowEntrega(false)} className="text-muted hover:text-ink transition-colors">
                 <X size={20} strokeWidth={1.6} />
               </button>
             </div>
@@ -462,18 +462,18 @@ export default function PedidoSeguimientoPage() {
                 </div>
               </div>
 
-              <div className="border border-brand-line divide-y divide-brand-line">
+              <div className="panel divide-y divide-brand-line">
                 <div className="flex justify-between items-center px-5 py-3">
-                  <span className="text-sm text-[#8a8175]">Precio unitario (del pedido)</span>
-                  <span className="text-sm text-[#201c17]">{dinero(pedido.precio_unitario)}</span>
+                  <span className="text-sm text-muted">Precio unitario (del pedido)</span>
+                  <span className="text-sm text-ink">{dinero(pedido.precio_unitario)}</span>
                 </div>
-                <div className="flex justify-between items-center px-5 py-3 bg-[#faf8f4]">
-                  <span className="text-sm text-[#201c17] font-medium">Total de la entrega</span>
-                  <span className="font-display text-xl text-[#201c17]">{dinero(totalEntregaPreview)}</span>
+                <div className="flex justify-between items-center px-5 py-3 bg-concrete-50">
+                  <span className="text-sm text-ink font-medium">Total de la entrega</span>
+                  <span className="font-display text-xl text-ink">{dinero(totalEntregaPreview)}</span>
                 </div>
                 <div className="flex justify-between items-center px-5 py-3">
-                  <span className="text-sm text-[#8a8175]">Pendientes después de esta entrega</span>
-                  <span className="text-sm text-[#201c17]">
+                  <span className="text-sm text-muted">Pendientes después de esta entrega</span>
+                  <span className="text-sm text-ink">
                     {entero(Math.max(pedido.cantidad_pendiente - (parseInt(cantidadEntrega) || 0), 0))}
                   </span>
                 </div>
@@ -489,7 +489,7 @@ export default function PedidoSeguimientoPage() {
                 />
               </div>
 
-              <p className="text-xs text-[#8a8175]">
+              <p className="text-xs text-muted">
                 La entrega descuenta los bloques del inventario de {nombreBloque(pedido.tipo_bloque)}.
               </p>
 
@@ -497,14 +497,14 @@ export default function PedidoSeguimientoPage() {
                 <button
                   type="button"
                   onClick={() => setShowEntrega(false)}
-                  className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
+                  className="btn btn-secondary flex-1 py-3 text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-ink-soft disabled:opacity-60 text-white text-sm tracking-wide transition-colors"
+                  className="btn btn-primary flex-1 py-3 text-sm tracking-wide"
                 >
                   {guardando ? 'Guardando...' : 'Registrar entrega'}
                 </button>
@@ -516,16 +516,16 @@ export default function PedidoSeguimientoPage() {
 
       {/* ========== MODAL REGISTRAR ABONO ========== */}
       {showAbono && (
-        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-8 pt-8 pb-4">
               <div>
-                <h3 className="font-display text-2xl text-[#201c17]">Registrar abono</h3>
-                <p className="text-sm text-[#8a8175] mt-1">
+                <h3 className="font-display text-2xl text-ink">Registrar abono</h3>
+                <p className="text-sm text-muted mt-1">
                   Pedido #{pedido.id} — saldo pendiente {dinero(pedido.saldo_pendiente)}
                 </p>
               </div>
-              <button onClick={() => setShowAbono(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+              <button onClick={() => setShowAbono(false)} className="text-muted hover:text-ink transition-colors">
                 <X size={20} strokeWidth={1.6} />
               </button>
             </div>
@@ -549,7 +549,7 @@ export default function PedidoSeguimientoPage() {
                   <button
                     type="button"
                     onClick={() => setMontoAbono(pedido.saldo_pendiente.toFixed(2))}
-                    className="mt-1.5 text-[11px] text-brand-accent hover:underline"
+                    className="mt-1.5 text-[11px] text-safety-deep hover:underline"
                   >
                     Pagar saldo completo
                   </button>
@@ -577,9 +577,9 @@ export default function PedidoSeguimientoPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center px-5 py-3 bg-[#faf8f4] border border-brand-line">
-                <span className="text-sm text-[#8a8175]">Saldo después del abono</span>
-                <span className="font-display text-lg text-[#201c17]">
+              <div className="flex justify-between items-center px-5 py-3 bg-concrete-50 border border-brand-line">
+                <span className="text-sm text-muted">Saldo después del abono</span>
+                <span className="font-display text-lg text-ink">
                   {dinero(
                     Math.max(Math.round(pedido.saldo_pendiente * 100) - Math.round((parseFloat(montoAbono) || 0) * 100), 0) / 100
                   )}
@@ -595,14 +595,14 @@ export default function PedidoSeguimientoPage() {
                 <button
                   type="button"
                   onClick={() => setShowAbono(false)}
-                  className="flex-1 py-3 border border-brand-line text-[#4a463e] text-sm hover:bg-[#faf8f4] transition-colors"
+                  className="btn btn-secondary flex-1 py-3 text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardando}
-                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-ink-soft disabled:opacity-60 text-white text-sm tracking-wide transition-colors"
+                  className="btn btn-primary flex-1 py-3 text-sm tracking-wide"
                 >
                   {guardando ? 'Guardando...' : 'Registrar abono'}
                 </button>
