@@ -10,18 +10,9 @@ import {
 import { toast } from 'sonner';
 import RangoFechas from '../../components/RangoFechas';
 import { rangoMesActual } from '../../../lib/dates';
-import {
-  Package,
-  Truck,
-  Factory,
-  History,
-  AlertTriangle,
-  X,
-  Droplets,
-  Box,
-  Loader2,
-} from 'lucide-react';
+import { Truck, Factory, History, AlertTriangle, X, Warehouse, Shovel } from 'lucide-react';
 
+import { Cargando, IconoBloque, IconoCemento } from '../../components/ui';
 function formatTipo(tipo: string) {
   return tipo
     .replace('bloque_de_', 'Bloque de ')
@@ -40,9 +31,9 @@ function formatAccion(accion: string) {
 }
 
 function getStockStatus(cantidad: number) {
-  if (cantidad <= 0) return { label: 'Agotado', color: 'text-red-800' };
-  if (cantidad < 100) return { label: 'Bajo', color: 'text-brand-accent' };
-  return { label: 'Normal', color: 'text-emerald-800' };
+  if (cantidad <= 0) return { label: 'Agotado', color: 'text-alert-deep' };
+  if (cantidad < 100) return { label: 'Bajo', color: 'text-safety-deep' };
+  return { label: 'Normal', color: 'text-ok-deep' };
 }
 
 export default function InventarioPage() {
@@ -148,10 +139,8 @@ export default function InventarioPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-3 h-96 text-[#8a8175]">
-        <Loader2 className="animate-spin" size={22} />
-        Cargando inventario...
-      </div>
+      <div className="flex items-center justify-center gap-3 h-96 text-muted">
+        <Cargando texto="Cargando inventario..." /></div>
     );
   }
 
@@ -159,28 +148,33 @@ export default function InventarioPage() {
     <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <p className="text-xs text-[#8a8175] uppercase tracking-[0.15em] mb-1">Materiales</p>
-          <h1 className="font-display text-3xl text-[#201c17]">Inventario</h1>
+        <div className="flex items-center gap-4">
+          <span className="icon-plate w-12 h-12 shrink-0">
+            <Warehouse size={24} strokeWidth={1.75} />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Materiales</p>
+            <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Inventario</h1>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowHistorial(true)}
-            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+            className="btn btn-secondary flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 text-sm"
           >
             <History className="w-4 h-4" strokeWidth={1.6} />
             Historial
           </button>
           <button
             onClick={() => setShowAbastecer(true)}
-            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 border border-brand-line text-[#4a463e] hover:bg-[#faf8f4] transition-colors text-sm"
+            className="btn btn-secondary flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 text-sm"
           >
             <Truck className="w-4 h-4" strokeWidth={1.6} />
             Abastecer
           </button>
           <button
             onClick={() => setShowProducir(true)}
-            className="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-brand-primary text-white hover:bg-brand-ink-soft transition-colors text-sm"
+            className="btn btn-primary flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 text-sm"
           >
             <Factory className="w-4 h-4" strokeWidth={1.6} />
             Producir
@@ -190,11 +184,11 @@ export default function InventarioPage() {
 
       {/* Alertas de stock bajo */}
       {(inventario['bloque_de_4"'] < 100 || inventario['bloque_de_5"'] < 100 || inventario['bloque_de_6"'] < 100) && (
-        <div className="border border-brand-accent/30 bg-brand-accent-soft p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-brand-accent mt-0.5 flex-shrink-0" strokeWidth={1.6} />
+        <div className="panel overflow-hidden border-l-0 p-4 pl-6 flex items-start gap-3 before:absolute before:inset-y-0 before:left-0 before:w-2 before:bg-[image:var(--tx-hazard)]">
+          <AlertTriangle className="w-5 h-5 text-safety-deep mt-0.5 flex-shrink-0" strokeWidth={1.6} />
           <div>
-            <h3 className="font-medium text-[#201c17] text-sm">Stock bajo detectado</h3>
-            <p className="text-[#6b6357] text-sm mt-1">
+            <h3 className="font-medium text-ink text-sm">Stock bajo detectado</h3>
+            <p className="text-muted text-sm mt-1">
               {[
                 inventario['bloque_de_4"'] < 100 && `Bloque de 4": ${inventario['bloque_de_4"']} und`,
                 inventario['bloque_de_5"'] < 100 && `Bloque de 5": ${inventario['bloque_de_5"']} und`,
@@ -206,16 +200,16 @@ export default function InventarioPage() {
       )}
 
       {/* Tarjetas de Inventario */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 border border-brand-line divide-y md:divide-y-0 md:divide-x divide-brand-line">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 kpi-grid">
         {/* Cemento */}
         <div className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-[#8a8175] uppercase tracking-[0.1em]">Cemento</p>
-            <Droplets className="w-4 h-4 text-[#c2b8a1]" strokeWidth={1.6} />
+            <p className="text-xs text-muted uppercase tracking-[0.1em]">Cemento</p>
+            <span className="icon-plate w-8 h-8"><IconoCemento size={16} /></span>
           </div>
-          <p className="font-display text-2xl text-[#201c17]">
+          <p className="font-display text-3xl text-ink tabular-nums">
             {inventario.cemento_bolsas || 0}
-            <span className="text-sm font-sans font-normal text-[#8a8175] ml-1">bolsas</span>
+            <span className="text-sm font-sans font-normal normal-case tracking-normal text-muted ml-1">bolsas</span>
           </p>
           {getStockStatus(inventario.cemento_bolsas || 0).label !== 'Normal' && (
             <span className={`text-xs font-medium ${getStockStatus(inventario.cemento_bolsas || 0).color}`}>
@@ -227,12 +221,12 @@ export default function InventarioPage() {
         {/* Arena */}
         <div className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-[#8a8175] uppercase tracking-[0.1em]">Arena</p>
-            <Box className="w-4 h-4 text-[#c2b8a1]" strokeWidth={1.6} />
+            <p className="text-xs text-muted uppercase tracking-[0.1em]">Arena</p>
+            <span className="icon-plate w-8 h-8"><Shovel size={16} strokeWidth={1.75} /></span>
           </div>
-          <p className="font-display text-2xl text-[#201c17]">
+          <p className="font-display text-3xl text-ink tabular-nums">
             {(inventario.arena_m3 || 0).toFixed(2)}
-            <span className="text-sm font-sans font-normal text-[#8a8175] ml-1">m³</span>
+            <span className="text-sm font-sans font-normal normal-case tracking-normal text-muted ml-1">m³</span>
           </p>
           {getStockStatus(inventario.arena_m3 || 0).label !== 'Normal' && (
             <span className={`text-xs font-medium ${getStockStatus(inventario.arena_m3 || 0).color}`}>
@@ -248,12 +242,12 @@ export default function InventarioPage() {
           return (
             <div key={tipo} className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-[#8a8175] uppercase tracking-[0.1em]">{formatTipo(tipo)}</p>
-                <Package className="w-4 h-4 text-[#c2b8a1]" strokeWidth={1.6} />
+                <p className="text-xs text-muted uppercase tracking-[0.1em]">{formatTipo(tipo)}</p>
+                <span className="icon-plate w-8 h-8"><IconoBloque size={16} /></span>
               </div>
-              <p className="font-display text-2xl text-[#201c17]">
+              <p className="font-display text-3xl text-ink tabular-nums">
                 {cantidad.toLocaleString()}
-                <span className="text-sm font-sans font-normal text-[#8a8175] ml-1">und</span>
+                <span className="text-sm font-sans font-normal normal-case tracking-normal text-muted ml-1">und</span>
               </p>
               {status.label !== 'Normal' && (
                 <span className={`text-xs font-medium ${status.color}`}>
@@ -267,34 +261,34 @@ export default function InventarioPage() {
 
       {/* Modal Abastecer */}
       {showAbastecer && (
-        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-md p-7">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-xl text-[#201c17]">Abastecer Inventario</h2>
-              <button onClick={() => setShowAbastecer(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+              <h2 className="font-display text-xl text-ink">Abastecer Inventario</h2>
+              <button onClick={() => setShowAbastecer(false)} className="text-muted hover:text-ink transition-colors">
                 <X className="w-5 h-5" strokeWidth={1.6} />
               </button>
             </div>
             <form onSubmit={handleAbastecer} className="space-y-5">
               <div>
-                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Cemento (bolsas)</label>
+                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Cemento (bolsas)</label>
                 <input
                   type="number"
                   value={cementoAbastecer}
                   onChange={(e) => setCementoAbastecer(e.target.value)}
-                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                  className="field w-full py-2.5"
                   placeholder="0"
                   min="0"
                   step="1"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Arena (m³)</label>
+                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Arena (m³)</label>
                 <input
                   type="number"
                   value={arenaAbastecer}
                   onChange={(e) => setArenaAbastecer(e.target.value)}
-                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                  className="field w-full py-2.5"
                   placeholder="0"
                   min="0"
                   step="0.01"
@@ -302,7 +296,7 @@ export default function InventarioPage() {
               </div>
               <button
                 type="submit"
-                className="w-full bg-brand-primary text-white py-3 text-sm tracking-wide hover:bg-brand-ink-soft transition-colors"
+                className="btn btn-primary w-full py-3 text-sm tracking-wide"
               >
                 Registrar Abastecimiento
               </button>
@@ -313,21 +307,21 @@ export default function InventarioPage() {
 
       {/* Modal Producir - MANUAL */}
       {showProducir && (
-        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-md p-7 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-display text-xl text-[#201c17]">Registrar Producción</h2>
-              <button onClick={() => setShowProducir(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+              <h2 className="font-display text-xl text-ink">Registrar Producción</h2>
+              <button onClick={() => setShowProducir(false)} className="text-muted hover:text-ink transition-colors">
                 <X className="w-5 h-5" strokeWidth={1.6} />
               </button>
             </div>
             <form onSubmit={handleProducir} className="space-y-5">
               <div>
-                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">Tipo de Bloque</label>
+                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Tipo de Bloque</label>
                 <select
                   value={productoProducir}
                   onChange={(e) => setProductoProducir(e.target.value)}
-                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors bg-white"
+                  className="field w-full py-2.5"
                 >
                   <option value='bloque_de_4"'>Bloque de 4&quot;</option>
                   <option value='bloque_de_5"'>Bloque de 5&quot;</option>
@@ -336,14 +330,14 @@ export default function InventarioPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
                   Cantidad de Bloques Producidos
                 </label>
                 <input
                   type="number"
                   value={cantidadProducir}
                   onChange={(e) => setCantidadProducir(e.target.value)}
-                  className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                  className="field w-full py-2.5"
                   placeholder="Ej: 500"
                   min="1"
                   step="1"
@@ -352,51 +346,51 @@ export default function InventarioPage() {
               </div>
 
               <div className="border-t border-brand-line pt-5">
-                <p className="text-xs font-medium text-[#201c17] uppercase tracking-[0.1em] mb-3">Materiales Gastados (Ingreso Manual)</p>
+                <p className="text-xs font-medium text-ink uppercase tracking-[0.1em] mb-3">Materiales Gastados (Ingreso Manual)</p>
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                    <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
                       Cemento (bolsas)
                     </label>
                     <input
                       type="number"
                       value={cementoGastado}
                       onChange={(e) => setCementoGastado(e.target.value)}
-                      className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                      className="field w-full py-2.5"
                       placeholder="Ej: 14"
                       min="0.01"
                       step="0.01"
                       required
                     />
-                    <p className="text-xs text-[#a39a8c] mt-1.5">
+                    <p className="text-xs text-faint mt-1.5">
                       Stock actual: {inventario.cemento_bolsas || 0} bolsas
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em] mb-1.5">
+                    <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
                       Arena (m³)
                     </label>
                     <input
                       type="number"
                       value={arenaGastada}
                       onChange={(e) => setArenaGastada(e.target.value)}
-                      className="w-full border-0 border-b border-brand-line px-0 py-2.5 focus:outline-none focus:border-brand-accent transition-colors"
+                      className="field w-full py-2.5"
                       placeholder="Ej: 2.5"
                       min="0.01"
                       step="0.01"
                       required
                     />
-                    <p className="text-xs text-[#a39a8c] mt-1.5">
+                    <p className="text-xs text-faint mt-1.5">
                       Stock actual: {(inventario.arena_m3 || 0).toFixed(2)} m³
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-brand-accent-soft border border-brand-accent/20 text-sm text-[#4a463e]">
-                <p className="font-medium text-[#201c17]">Ingreso manual</p>
+              <div className="p-4 bg-brand-accent-soft border border-brand-accent/20 text-sm text-ink-soft">
+                <p className="font-medium text-ink">Ingreso manual</p>
                 <p className="mt-1">
                   Ingresa la cantidad real de cemento y arena que gastaste en esta producción. El sistema validará que haya suficiente stock disponible.
                 </p>
@@ -404,7 +398,7 @@ export default function InventarioPage() {
 
               <button
                 type="submit"
-                className="w-full bg-brand-primary text-white py-3 text-sm tracking-wide hover:bg-brand-ink-soft transition-colors"
+                className="btn btn-primary w-full py-3 text-sm tracking-wide"
               >
                 Registrar Producción
               </button>
@@ -415,12 +409,12 @@ export default function InventarioPage() {
 
       {/* Modal Historial */}
       {showHistorial && (
-        <div className="fixed inset-0 bg-[#15130f]/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div className="flex flex-col gap-4 p-7 border-b border-brand-line">
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-xl text-[#201c17]">Historial de Movimientos</h2>
-                <button onClick={() => setShowHistorial(false)} className="text-[#8a8175] hover:text-[#201c17] transition-colors">
+                <h2 className="font-display text-xl text-ink">Historial de Movimientos</h2>
+                <button onClick={() => setShowHistorial(false)} className="text-muted hover:text-ink transition-colors">
                   <X className="w-5 h-5" strokeWidth={1.6} />
                 </button>
               </div>
@@ -433,8 +427,8 @@ export default function InventarioPage() {
             </div>
             <div className="overflow-auto p-7">
               {historial.length === 0 ? (
-                <div className="text-center text-[#8a8175] py-8">
-                  <History className="w-10 h-10 mx-auto mb-3 text-[#d9d2c3]" strokeWidth={1.4} />
+                <div className="text-center text-muted py-8">
+                  <History className="w-10 h-10 mx-auto mb-3 text-faint-2" strokeWidth={1.4} />
                   <p className="text-sm">No hay movimientos registrados</p>
                 </div>
               ) : (
@@ -445,15 +439,15 @@ export default function InventarioPage() {
                       className="flex items-center justify-between py-4"
                     >
                       <div>
-                        <p className="text-sm text-[#201c17]">{formatAccion(item.accion)}</p>
-                        <p className="text-xs text-[#8a8175] mt-0.5">{formatTipo(item.tipo)}</p>
+                        <p className="text-sm text-ink">{formatAccion(item.accion)}</p>
+                        <p className="text-xs text-muted mt-0.5">{formatTipo(item.tipo)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-[#201c17]">
+                        <p className="text-sm font-medium text-ink">
                           {item.accion === 'produccion_uso' ? '−' : '+'}
                           {Number(item.cantidad).toFixed(2)}
                         </p>
-                        <p className="text-xs text-[#8a8175] mt-0.5">
+                        <p className="text-xs text-muted mt-0.5">
                           {new Date(item.fecha).toLocaleDateString('es-HN')}
                         </p>
                       </div>

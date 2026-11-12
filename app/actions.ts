@@ -82,6 +82,20 @@ export type DashboardResumen = {
   facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[];
   // Pedidos de Seguimiento con saldo por cobrar (los 5 mayores)
   saldosSeguimiento: { id: number; cliente: string; saldo_pendiente: number }[];
+  // Centro de operaciones (solo lectura; no altera ningún cálculo existente)
+  operacion: {
+    produccionHoy: number; // bloques producidos hoy
+    produccionPeriodo: number; // bloques producidos en el periodo seleccionado
+    bloquesFabricados: number; // total histórico de bloques producidos
+    inventarioBloques: number; // bloques disponibles (4" + 5" + 6")
+    inventarioPorTipo: { tipo: string; cantidad: number }[];
+    cementoBolsas: number;
+    arenaM3: number;
+    ventasHoy: number; // despachos + entregas de Seguimiento de hoy
+    pedidosPendientes: number; // pedidos sin despachar + Seguimiento con bloques pendientes
+    bloquesPorEntregar: number; // bloques aún no entregados de esos pedidos
+    dineroRecibido: number; // cobrado en el periodo (facturas despachadas - saldo + abonos)
+  };
 };
 
 export type ReporteGeneral = {
@@ -197,7 +211,8 @@ export async function loginAction(
 // ============================================================
 export async function getDashboardResumen(
   fechaDesde?: string,
-  fechaHasta?: string
+  fechaHasta?: string,
+  hoy?: string
 ): Promise<ServerResult<DashboardResumen>> {
   let totalVentas = 0;
   let totalGastos = 0;
@@ -344,6 +359,117 @@ export async function getDashboardResumen(
     console.log('Error facturas pendientes:', e);
   }
 
+  // --- Centro de operaciones: cada consulta con su propio respaldo ---
+  const operacion: DashboardResumen['operacion'] = {
+    produccionHoy: 0,
+    produccionPeriodo: 0,
+    bloquesFabricados: 0,
+    inventarioBloques: 0,
+    inventarioPorTipo: [],
+    cementoBolsas: 0,
+    arenaM3: 0,
+    ventasHoy: 0,
+    pedidosPendientes: 0,
+    bloquesPorEntregar: 0,
+    dineroRecibido: 0,
+  };
+  // "Hoy" lo manda el navegador (fecha local) para no depender de la zona horaria del servidor.
+  const dia = hoy && /^\d{4}-\d{2}-\d{2}$/.test(hoy) ? hoy : null;
+
+  try {
+    const prod = await sql`
+      SELECT
+        COALESCE(SUM(cantidad), 0) AS total,
+        COALESCE(SUM(cantidad) FILTER (
+          WHERE 1=1
+            ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+            ${fechaHasta ? sql`AND fecha < ${fechaHasta}::date + INTERVAL '1 day'` : sql``}
+        ), 0) AS periodo,
+        COALESCE(SUM(cantidad) FILTER (
+          WHERE ${dia ? sql`fecha::date = ${dia}::date` : sql`fecha::date = CURRENT_DATE`}
+        ), 0) AS hoy
+      FROM historial_inventario
+      WHERE accion = 'produccion' AND tipo LIKE 'bloque_de_%'
+    `;
+    const r = prod[0] as any;
+    operacion.bloquesFabricados = Number(r?.total || 0);
+    operacion.produccionPeriodo = Number(r?.periodo || 0);
+    operacion.produccionHoy = Number(r?.hoy || 0);
+  } catch (e) {
+    console.log('Error producción:', e);
+  }
+
+  try {
+    const inv = await sql`SELECT tipo, cantidad FROM inventario`;
+    for (const row of inv as any[]) {
+      const cantidad = Number(row.cantidad || 0);
+      if (String(row.tipo).startsWith('bloque_de_')) {
+        operacion.inventarioBloques += cantidad;
+        operacion.inventarioPorTipo.push({ tipo: row.tipo, cantidad });
+      } else if (row.tipo === 'cemento_bolsas') {
+        operacion.cementoBolsas = cantidad;
+      } else if (row.tipo === 'arena_m3') {
+        operacion.arenaM3 = cantidad;
+      }
+    }
+    operacion.inventarioPorTipo.sort((a, b) => a.tipo.localeCompare(b.tipo));
+  } catch (e) {
+    console.log('Error inventario dashboard:', e);
+  }
+
+  try {
+    const filtroDia = (col: string) =>
+      dia ? sql`${sql(col)}::date = ${dia}::date` : sql`${sql(col)}::date = CURRENT_DATE`;
+    const [f] = await sql`SELECT COALESCE(SUM(total_venta), 0) AS total FROM historial_facturas WHERE ${filtroDia('fecha_despacho')}`;
+    const [e] = await sql`SELECT COALESCE(SUM(total), 0) AS total FROM entregas_pedido WHERE ${filtroDia('fecha')}`;
+    operacion.ventasHoy = Number((f as any)?.total || 0) + Number((e as any)?.total || 0);
+  } catch (e) {
+    console.log('Error ventas de hoy:', e);
+  }
+
+  try {
+    const [p] = await sql`SELECT COUNT(*) AS n, COALESCE(SUM(cantidad), 0) AS bloques FROM pedidos`;
+    operacion.pedidosPendientes += Number((p as any)?.n || 0);
+    operacion.bloquesPorEntregar += Number((p as any)?.bloques || 0);
+  } catch (e) {
+    console.log('Error pedidos pendientes:', e);
+  }
+
+  try {
+    const [s] = await sql`
+      SELECT COUNT(*) AS n, COALESCE(SUM(p.cantidad_total - COALESCE(en.entregado, 0)), 0) AS bloques
+      FROM pedidos_seguimiento p
+      LEFT JOIN (
+        SELECT pedido_id, SUM(cantidad) AS entregado FROM entregas_pedido GROUP BY pedido_id
+      ) en ON en.pedido_id = p.id
+      WHERE p.cantidad_total - COALESCE(en.entregado, 0) > 0
+    `;
+    operacion.pedidosPendientes += Number((s as any)?.n || 0);
+    operacion.bloquesPorEntregar += Number((s as any)?.bloques || 0);
+  } catch (e) {
+    console.log('Error entregas pendientes:', e);
+  }
+
+  try {
+    const [f] = await sql`
+      SELECT COALESCE(SUM(total_venta - saldo_pendiente), 0) AS total
+      FROM historial_facturas
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
+    `;
+    const [a] = await sql`
+      SELECT COALESCE(SUM(monto), 0) AS total
+      FROM abonos_pedido
+      WHERE 1=1
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
+    operacion.dineroRecibido = Number((f as any)?.total || 0) + Number((a as any)?.total || 0);
+  } catch (e) {
+    console.log('Error dinero recibido:', e);
+  }
+
   return {
     success: true,
     data: {
@@ -356,6 +482,7 @@ export async function getDashboardResumen(
       stockBajo: stockBajo || [],
       facturasPendientes: facturasPendientes || [],
       saldosSeguimiento,
+      operacion,
     },
   };
 }

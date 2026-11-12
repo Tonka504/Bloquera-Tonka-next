@@ -19,28 +19,28 @@ export default function RangoFechas({
 }) {
   return (
     <div className="flex items-center gap-4 flex-wrap">
-      <div className="flex items-center gap-2 text-[#8a8175]">
+      <div className="flex items-center gap-2 text-muted">
         <Calendar size={14} strokeWidth={1.6} />
         <span className="text-xs uppercase tracking-[0.1em]">Periodo</span>
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em]">Desde</label>
+        <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Desde</label>
         <input
           type="date"
           value={fechaDesde}
           max={fechaHasta || undefined}
           onChange={(e) => onFechaDesde(e.target.value)}
-          className="border-0 border-b border-brand-line px-0 py-2 text-sm bg-transparent focus:outline-none focus:border-brand-accent transition-colors"
+          className="field py-2 text-sm"
         />
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-[#8a8175] uppercase tracking-[0.1em]">Hasta</label>
+        <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Hasta</label>
         <input
           type="date"
           value={fechaHasta}
           min={fechaDesde || undefined}
           onChange={(e) => onFechaHasta(e.target.value)}
-          className="border-0 border-b border-brand-line px-0 py-2 text-sm bg-transparent focus:outline-none focus:border-brand-accent transition-colors"
+          className="field py-2 text-sm"
         />
       </div>
     </div>

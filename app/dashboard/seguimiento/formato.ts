@@ -30,15 +30,16 @@ export const hoyLocal = () => {
 
 export function estiloEstado(estado: string) {
   switch (estado) {
+    // Clases .badge-* definidas en app/globals.css (placa con LED de estado)
     case 'Finalizado':
-      return 'text-emerald-800 border-emerald-800/30 bg-emerald-50';
+      return 'badge-ok';
     case 'Pagado':
     case 'Entregado':
-      return 'text-sky-900 border-sky-900/20 bg-sky-50';
+      return 'badge-info';
     case 'En proceso':
     case 'Parcial':
-      return 'text-brand-accent border-brand-accent/30 bg-brand-accent-soft';
+      return 'badge-progress';
     default:
-      return 'text-[#8a8175] border-brand-line bg-white';
+      return 'badge-pending';
   }
 }
