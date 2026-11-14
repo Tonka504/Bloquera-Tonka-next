@@ -140,7 +140,8 @@ function drawShieldIcon(doc: jsPDF, cx: number, cy: number, s: number, color: [n
   );
 }
 
-export function generateInvoicePDF(factura: any) {
+// descargar (por defecto): guarda el PDF. archivo: lo devuelve como File para compartirlo.
+export function generateInvoicePDF(factura: any, opciones: { salida?: 'descargar' | 'archivo' } = {}): File | undefined {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -583,5 +584,9 @@ export function generateInvoicePDF(factura: any) {
     doc.text(l2, cx + 7, cy + 3);
   });
 
-  doc.save(`${esCotizacion ? 'Cotizacion' : 'Factura'}_${numeroDoc}.pdf`);
+  const nombreArchivo = `${esCotizacion ? 'Cotizacion' : 'Factura'}_${numeroDoc}.pdf`;
+  if (opciones.salida === 'archivo') {
+    return new File([doc.output('blob')], nombreArchivo, { type: 'application/pdf' });
+  }
+  doc.save(nombreArchivo);
 }

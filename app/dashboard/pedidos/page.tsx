@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Truck, Trash2, Printer, Search, X, CheckCircle, ShoppingCart, ClipboardList } from 'lucide-react';
+import { Plus, Truck, Trash2, Printer, Search, X, CheckCircle, ShoppingCart, ClipboardList, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getPedidos,
@@ -13,6 +13,7 @@ import {
 } from '../../actions';
 import { calcularDescuento, labelDescuento, UMBRAL_DESCUENTO_AUTOMATICO, type DescuentoTipo } from '../../../lib/descuento';
 import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
+import { compartirPorWhatsApp } from '../../../lib/compartirWhatsApp';
 
 import { Cargando } from '../../components/ui';
 export default function PedidosPage() {
@@ -195,13 +196,13 @@ export default function PedidosPage() {
     }
   };
 
-  const imprimirPedido = (pedido: any) => {
+  const datosCotizacion = (pedido: any) => {
     const subtotalPedido = pedido.cantidad * pedido.precio_unitario;
     const descuentoTipoPedido: DescuentoTipo = pedido.descuento_tipo || 'ninguno';
     const descuentoValorPedido = Number(pedido.descuento_valor) || 0;
     const descuentoMontoPedido = calcularDescuento(subtotalPedido, pedido.cantidad, descuentoTipoPedido, descuentoValorPedido);
 
-    generateInvoicePDF({
+    return {
       id: pedido.id,
       fecha: pedido.fecha,
       cliente: pedido.cliente,
@@ -214,8 +215,18 @@ export default function PedidosPage() {
       descuento_monto: descuentoMontoPedido,
       total_venta: subtotalPedido - descuentoMontoPedido,
       anticipo: pedido.anticipo,
-    });
+    };
+  };
+
+  const imprimirPedido = (pedido: any) => {
+    generateInvoicePDF(datosCotizacion(pedido));
     toast.success(`Cotización del pedido #${pedido.id} descargada`);
+  };
+
+  const enviarCotizacionWhatsApp = async (pedido: any) => {
+    const r = await compartirPorWhatsApp(datosCotizacion(pedido));
+    if (r === 'descargado') toast.success('PDF descargado: adjúntalo en el chat de WhatsApp que se abrió');
+    else if (r === 'compartido') toast.success('Enviado a WhatsApp');
   };
 
   const abrirModalEliminar = (pedido: any) => {
@@ -403,6 +414,13 @@ export default function PedidosPage() {
                           title="Imprimir cotización"
                         >
                           <Printer size={16} strokeWidth={1.6} />
+                        </button>
+                        <button
+                          onClick={() => enviarCotizacionWhatsApp(p)}
+                          className="btn-icon p-1.5 text-ok-deep"
+                          title="Enviar cotización por WhatsApp"
+                        >
+                          <MessageCircle size={16} strokeWidth={1.6} />
                         </button>
                         <button
                           onClick={() => setPasarObjetivo(p)}

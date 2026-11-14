@@ -69,6 +69,34 @@ export type Configuracion = {
   precio_bloque_4: number;
   precio_bloque_5: number;
   precio_bloque_6: number;
+  precio_bolsa_cemento: number;
+  precio_m3_arena: number;
+};
+
+// Costo de producción y margen por tipo de bloque (Reportes).
+export type CostoPorTipo = {
+  tipo: string; // clave de inventario, ej. 'bloque_de_4"'
+  producidos: number;
+  cementoUsado: number;
+  arenaUsada: number;
+  costoMaterialUnit: number; // cemento + arena por bloque
+  costoMaterialEstimado: boolean; // true si se usó la receta de Configuración en vez de lo registrado
+  costoTotalUnit: number; // material + parte de los otros gastos
+  vendidos: number;
+  ingresos: number;
+  precioPromedio: number;
+  margenUnit: number;
+  margenPct: number;
+  gananciaEstimada: number;
+};
+
+export type CostosProduccion = {
+  preciosConfigurados: boolean;
+  bloquesProducidos: number;
+  costoMateriales: number;
+  otrosGastos: number; // gastos del periodo sin "Materia Prima"
+  costoIndirectoUnit: number;
+  porTipo: CostoPorTipo[];
 };
 
 export type DashboardResumen = {
@@ -1139,6 +1167,192 @@ export async function getReporteGeneral(
 }
 
 // ============================================================
+// COSTOS DE PRODUCCION Y MARGEN
+// ============================================================
+// Costo por bloque = materiales (cemento + arena realmente usados en Producción,
+// a precio de Configuración) + parte proporcional de los demás gastos del periodo.
+// Los gastos de "Materia Prima" no se suman aparte: la materia prima ya entra por
+// lo consumido, y sumar también la compra la contaría dos veces.
+export async function getCostosProduccion(
+  fechaDesde?: string,
+  fechaHasta?: string
+): Promise<ServerResult<CostosProduccion>> {
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+
+  let precioCemento = 0;
+  let precioArena = 0;
+  let bloquesPorBolsa = 36;
+  let arenaPor100 = 0.3;
+  const precioLista: Record<string, number> = {};
+  try {
+    const cfg = (await sql`SELECT * FROM configuracion LIMIT 1`)[0] as any;
+    if (cfg) {
+      precioCemento = Number(cfg.precio_bolsa_cemento) || 0;
+      precioArena = Number(cfg.precio_m3_arena) || 0;
+      bloquesPorBolsa = Number(cfg.bloques_por_bolsa) || 36;
+      arenaPor100 = Number(cfg.arena_por_100_bloques) || 0.3;
+      precioLista['bloque_de_4"'] = Number(cfg.precio_bloque_4) || 0;
+      precioLista['bloque_de_5"'] = Number(cfg.precio_bloque_5) || 0;
+      precioLista['bloque_de_6"'] = Number(cfg.precio_bloque_6) || 0;
+    }
+  } catch (e) {
+    console.log('Error configuración costos:', e);
+  }
+
+  // Producción del periodo por tipo. producirBloquesAction registra, en orden,
+  // cemento usado -> arena usada -> bloques producidos; se enlazan por id consecutivo.
+  const produccion: Record<string, { producidos: number; vinculados: number; cemento: number; arena: number }> = {};
+  try {
+    const rows = await sql`
+      SELECT
+        tipo,
+        SUM(cantidad) AS producidos,
+        SUM(CASE WHEN vinculado THEN cantidad ELSE 0 END) AS vinculados,
+        SUM(CASE WHEN vinculado THEN c2 ELSE 0 END) AS cemento,
+        SUM(CASE WHEN vinculado THEN c1 ELSE 0 END) AS arena
+      FROM (
+        SELECT
+          tipo, cantidad, accion, fecha,
+          LAG(cantidad, 1) OVER w AS c1,
+          LAG(cantidad, 2) OVER w AS c2,
+          (LAG(tipo, 1) OVER w = 'arena_m3' AND LAG(accion, 1) OVER w = 'produccion_uso'
+           AND LAG(tipo, 2) OVER w = 'cemento_bolsas' AND LAG(accion, 2) OVER w = 'produccion_uso') AS vinculado
+        FROM historial_inventario
+        WINDOW w AS (ORDER BY id)
+      ) h
+      WHERE accion = 'produccion'
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha < ${fechaHasta}::date + INTERVAL '1 day'` : sql``}
+      GROUP BY tipo
+    `;
+    for (const row of rows as any[]) {
+      produccion[row.tipo] = {
+        producidos: Number(row.producidos) || 0,
+        vinculados: Number(row.vinculados) || 0,
+        cemento: Number(row.cemento) || 0,
+        arena: Number(row.arena) || 0,
+      };
+    }
+  } catch (e) {
+    console.log('Error producción costos:', e);
+  }
+
+  // Ventas del periodo por tipo: facturas (producto en texto, mismo criterio que el
+  // despacho: primero 4, luego 5, luego 6) + entregas de Seguimiento.
+  const ventas: Record<string, { vendidos: number; ingresos: number }> = {};
+  const sumarVenta = (tipo: string, vendidos: number, ingresos: number) => {
+    const v = (ventas[tipo] ||= { vendidos: 0, ingresos: 0 });
+    v.vendidos += vendidos;
+    v.ingresos += ingresos;
+  };
+  try {
+    const rows = await sql`
+      SELECT tipo, SUM(cantidad) AS vendidos, SUM(total_venta) AS ingresos
+      FROM (
+        SELECT
+          CASE
+            WHEN producto LIKE '%4%' THEN 'bloque_de_4"'
+            WHEN producto LIKE '%5%' THEN 'bloque_de_5"'
+            WHEN producto LIKE '%6%' THEN 'bloque_de_6"'
+          END AS tipo,
+          cantidad, total_venta
+        FROM historial_facturas
+        WHERE 1=1
+          ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
+          ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
+      ) f
+      WHERE tipo IS NOT NULL
+      GROUP BY tipo
+    `;
+    for (const row of rows as any[]) sumarVenta(row.tipo, Number(row.vendidos) || 0, Number(row.ingresos) || 0);
+  } catch (e) {
+    console.log('Error ventas facturas costos:', e);
+  }
+  try {
+    const rows = await sql`
+      SELECT p.tipo_bloque AS tipo, SUM(e.cantidad) AS vendidos, SUM(e.total) AS ingresos
+      FROM entregas_pedido e
+      JOIN pedidos_seguimiento p ON p.id = e.pedido_id
+      WHERE 1=1
+        ${fechaDesde ? sql`AND e.fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND e.fecha <= ${fechaHasta}` : sql``}
+      GROUP BY p.tipo_bloque
+    `;
+    for (const row of rows as any[]) sumarVenta(row.tipo, Number(row.vendidos) || 0, Number(row.ingresos) || 0);
+  } catch (e) {
+    console.log('Error ventas seguimiento costos:', e);
+  }
+
+  let otrosGastos = 0;
+  try {
+    const rows = await sql`
+      SELECT COALESCE(SUM(monto), 0) AS total
+      FROM gastos
+      WHERE categoria IS DISTINCT FROM 'Materia Prima'
+        ${fechaDesde ? sql`AND fecha >= ${fechaDesde}` : sql``}
+        ${fechaHasta ? sql`AND fecha <= ${fechaHasta}` : sql``}
+    `;
+    otrosGastos = Number((rows[0] as any)?.total || 0);
+  } catch (e) {
+    console.log('Error otros gastos costos:', e);
+  }
+
+  // Receta de Configuración, para producción sin materiales enlazados o tipos sin producción.
+  const costoMaterialReceta = precioCemento / bloquesPorBolsa + (precioArena * arenaPor100) / 100;
+
+  const bloquesProducidos = Object.values(produccion).reduce((s, p) => s + p.producidos, 0);
+  const bloquesVendidos = Object.values(ventas).reduce((s, v) => s + v.vendidos, 0);
+  // Los otros gastos se reparten entre lo producido; si no hubo producción, entre lo vendido.
+  const baseReparto = bloquesProducidos || bloquesVendidos;
+  const costoIndirectoUnit = baseReparto > 0 ? otrosGastos / baseReparto : 0;
+
+  let costoMateriales = 0;
+  const porTipo: CostoPorTipo[] = TIPOS_BLOQUE.map((tipo) => {
+    const p = produccion[tipo] || { producidos: 0, vinculados: 0, cemento: 0, arena: 0 };
+    const v = ventas[tipo] || { vendidos: 0, ingresos: 0 };
+
+    const sinVincular = p.producidos - p.vinculados;
+    const materialPeriodo =
+      p.cemento * precioCemento + p.arena * precioArena + sinVincular * costoMaterialReceta;
+    costoMateriales += materialPeriodo;
+
+    const costoMaterialEstimado = p.vinculados === 0;
+    const costoMaterialUnit = p.producidos > 0 ? materialPeriodo / p.producidos : costoMaterialReceta;
+    const costoTotalUnit = costoMaterialUnit + costoIndirectoUnit;
+    const precioPromedio = v.vendidos > 0 ? v.ingresos / v.vendidos : precioLista[tipo] || 0;
+    const margenUnit = precioPromedio - costoTotalUnit;
+
+    return {
+      tipo,
+      producidos: p.producidos,
+      cementoUsado: r2(p.cemento),
+      arenaUsada: r2(p.arena),
+      costoMaterialUnit: r2(costoMaterialUnit),
+      costoMaterialEstimado,
+      costoTotalUnit: r2(costoTotalUnit),
+      vendidos: v.vendidos,
+      ingresos: r2(v.ingresos),
+      precioPromedio: r2(precioPromedio),
+      margenUnit: r2(margenUnit),
+      margenPct: precioPromedio > 0 ? Math.round((margenUnit / precioPromedio) * 1000) / 10 : 0,
+      gananciaEstimada: r2(margenUnit * v.vendidos),
+    };
+  });
+
+  return {
+    success: true,
+    data: {
+      preciosConfigurados: precioCemento > 0 && precioArena > 0,
+      bloquesProducidos,
+      costoMateriales: r2(costoMateriales),
+      otrosGastos: r2(otrosGastos),
+      costoIndirectoUnit: r2(costoIndirectoUnit),
+      porTipo,
+    },
+  };
+}
+
+// ============================================================
 // CONFIGURACION
 // ============================================================
 export async function getConfiguracion(): Promise<ServerResult<Configuracion>> {
@@ -1160,6 +1374,8 @@ export async function guardarConfiguracion(config: {
   precio_bloque_4: number;
   precio_bloque_5: number;
   precio_bloque_6: number;
+  precio_bolsa_cemento: number;
+  precio_m3_arena: number;
 }): Promise<ServerResult> {
   try {
     await sql`
@@ -1169,7 +1385,9 @@ export async function guardarConfiguracion(config: {
         arena_por_100_bloques = ${config.arena_por_100_bloques},
         precio_bloque_4 = ${config.precio_bloque_4},
         precio_bloque_5 = ${config.precio_bloque_5},
-        precio_bloque_6 = ${config.precio_bloque_6}
+        precio_bloque_6 = ${config.precio_bloque_6},
+        precio_bolsa_cemento = ${config.precio_bolsa_cemento},
+        precio_m3_arena = ${config.precio_m3_arena}
     `;
     return { success: true };
   } catch (error) {
