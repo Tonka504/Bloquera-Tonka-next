@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Truck, Wallet, ClipboardList, ChartColumn } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package, FileText, ShoppingCart, Users, BarChart3, Truck, Wallet, ClipboardList, ChartColumn, Calculator, Settings2 } from 'lucide-react';
 import Link from 'next/link';
-import { getReporteGeneral } from '../../actions';
+import { getReporteGeneral, getCostosProduccion, type CostosProduccion } from '../../actions';
 import RangoFechas from '../../components/RangoFechas';
 import { rangoMesActual } from '../../../lib/dates';
 
 import { Cargando } from '../../components/ui';
 export default function ReportesPage() {
   const [data, setData] = useState<any>(null);
+  const [costos, setCostos] = useState<CostosProduccion | null>(null);
   const [loading, setLoading] = useState(true);
   const { fechaDesde: desdeInicial, fechaHasta: hastaInicial } = rangoMesActual();
   const [fechaDesde, setFechaDesde] = useState(desdeInicial);
@@ -17,10 +18,14 @@ export default function ReportesPage() {
 
   const cargarReporte = async () => {
     setLoading(true);
-    const result = await getReporteGeneral(fechaDesde, fechaHasta);
+    const [result, resultCostos] = await Promise.all([
+      getReporteGeneral(fechaDesde, fechaHasta),
+      getCostosProduccion(fechaDesde, fechaHasta),
+    ]);
     if (result.success) {
       setData(result.data);
     }
+    setCostos(resultCostos.success && resultCostos.data ? resultCostos.data : null);
     setLoading(false);
   };
 
@@ -33,6 +38,9 @@ export default function ReportesPage() {
     const date = new Date(mesStr + '-01');
     return meses[date.getMonth()] || mesStr;
   };
+
+  const nombreTipo = (tipo: string) => `Bloque ${tipo.replace('bloque_de_', '')}`;
+  const lps = (n: number) => `L. ${n.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const maxVentasMes = data ? Math.max(...data.ventasPorMes.map((v: any) => Number(v.total)), 1) : 1;
   const maxGastosCat = data ? Math.max(...data.gastosPorCategoria.map((g: any) => Number(g.total)), 1) : 1;
@@ -139,6 +147,93 @@ export default function ReportesPage() {
           </div>
         </div>
       </div>
+
+      {/* Costo y margen por bloque */}
+      {costos && (
+        <div className="panel p-5 sm:p-7 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+            <div className="flex items-center gap-2">
+              <Calculator className="text-muted" size={17} strokeWidth={1.6} />
+              <h3 className="font-display text-lg text-ink">Costo y Ganancia por Bloque</h3>
+            </div>
+            <Link href="/dashboard/config" className="flex items-center gap-1.5 text-xs text-muted hover:text-safety-deep transition-colors uppercase tracking-wide">
+              <Settings2 size={13} strokeWidth={1.6} /> Precios de materia prima
+            </Link>
+          </div>
+
+          {!costos.preciosConfigurados ? (
+            <div className="text-center py-10 text-sm text-muted">
+              Para calcular el costo por bloque, ingresa el precio de la bolsa de cemento y del m³ de arena en{' '}
+              <Link href="/dashboard/config" className="text-safety-deep underline">Configuración</Link>.
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-concrete-50 rounded-[5px] p-4">
+                  <p className="text-[11px] text-muted uppercase tracking-[0.1em] mb-1">Bloques producidos</p>
+                  <p className="font-display text-xl text-ink">{costos.bloquesProducidos.toLocaleString()} und</p>
+                </div>
+                <div className="bg-concrete-50 rounded-[5px] p-4">
+                  <p className="text-[11px] text-muted uppercase tracking-[0.1em] mb-1">Cemento y arena usados</p>
+                  <p className="font-display text-xl text-ink">{lps(costos.costoMateriales)}</p>
+                </div>
+                <div className="bg-concrete-50 rounded-[5px] p-4">
+                  <p className="text-[11px] text-muted uppercase tracking-[0.1em] mb-1">Otros gastos por bloque</p>
+                  <p className="font-display text-xl text-ink">{lps(costos.costoIndirectoUnit)}</p>
+                  <p className="text-[11px] text-faint mt-0.5">{lps(costos.otrosGastos)} en mano de obra, transporte, etc.</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="table-industrial w-full">
+                  <thead>
+                    <tr className="border-b border-brand-line">
+                      <th className="px-4 py-3 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Tipo</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Costo material</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Costo total</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Precio prom.</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Ganancia / bloque</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Vendidos</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Ganancia estimada</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brand-line">
+                    {costos.porTipo.map((t) => (
+                      <tr key={t.tipo}>
+                        <td className="px-4 py-3.5 text-ink whitespace-nowrap">
+                          {nombreTipo(t.tipo)}
+                          {t.producidos > 0 && (
+                            <p className="text-[11px] text-faint mt-0.5">{t.producidos.toLocaleString()} producidos</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-right text-ink-soft whitespace-nowrap">
+                          {lps(t.costoMaterialUnit)}
+                          {t.costoMaterialEstimado && <span className="text-faint" title="Estimado con la receta de Configuración"> *</span>}
+                        </td>
+                        <td className="px-4 py-3.5 text-right text-ink font-medium whitespace-nowrap">{lps(t.costoTotalUnit)}</td>
+                        <td className="px-4 py-3.5 text-right text-ink-soft whitespace-nowrap">{lps(t.precioPromedio)}</td>
+                        <td className={`px-4 py-3.5 text-right font-medium whitespace-nowrap ${t.margenUnit >= 0 ? 'text-ok-deep' : 'text-alert-deep'}`}>
+                          {lps(t.margenUnit)}
+                          <p className="text-[11px] font-normal text-faint mt-0.5">{t.margenPct}%</p>
+                        </td>
+                        <td className="px-4 py-3.5 text-right text-ink-soft">{t.vendidos.toLocaleString()}</td>
+                        <td className={`px-4 py-3.5 text-right font-display whitespace-nowrap ${t.gananciaEstimada >= 0 ? 'text-ink' : 'text-alert-deep'}`}>
+                          {lps(t.gananciaEstimada)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-faint mt-4 leading-relaxed">
+                Costo material: cemento y arena realmente usados en Producción, a los precios de Configuración.
+                Las compras de &quot;Materia Prima&quot; en Gastos no se suman otra vez para no contarlas doble.
+                {costos.porTipo.some((t) => t.costoMaterialEstimado) && ' * Sin producción registrada en el periodo: estimado con la receta de Configuración.'}
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

@@ -13,6 +13,8 @@ export default function ConfigPage() {
     precio_bloque_4: 19,
     precio_bloque_5: 20,
     precio_bloque_6: 22,
+    precio_bolsa_cemento: 0,
+    precio_m3_arena: 0,
   });
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -27,6 +29,8 @@ export default function ConfigPage() {
         precio_bloque_4: Number(result.data.precio_bloque_4) || 19,
         precio_bloque_5: Number(result.data.precio_bloque_5) || 20,
         precio_bloque_6: Number(result.data.precio_bloque_6) || 22,
+        precio_bolsa_cemento: Number(result.data.precio_bolsa_cemento) || 0,
+        precio_m3_arena: Number(result.data.precio_m3_arena) || 0,
       });
     } else {
       toast.error(result.message || 'Error al cargar configuración');
@@ -145,6 +149,44 @@ export default function ConfigPage() {
                   min="0.01"
                   value={config.precio_bloque_6}
                   onChange={(e) => setConfig({ ...config, precio_bloque_6: parseFloat(e.target.value) || 0 })}
+                  className="field w-full pl-9 py-2.5 text-lg"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-brand-line" />
+
+        {/* Costos de materia prima */}
+        <div>
+          <h3 className="font-display text-lg mb-2 text-ink">Costos de Materia Prima</h3>
+          <p className="text-xs text-faint mb-6">Lo que pagas al comprar. Se usa para calcular el costo y la ganancia por bloque en Reportes.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio por bolsa de cemento</label>
+              <div className="relative mt-2">
+                <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={config.precio_bolsa_cemento}
+                  onChange={(e) => setConfig({ ...config, precio_bolsa_cemento: parseFloat(e.target.value) || 0 })}
+                  className="field w-full pl-9 py-2.5 text-lg"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio por m³ de arena</label>
+              <div className="relative mt-2">
+                <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={config.precio_m3_arena}
+                  onChange={(e) => setConfig({ ...config, precio_m3_arena: parseFloat(e.target.value) || 0 })}
                   className="field w-full pl-9 py-2.5 text-lg"
                 />
               </div>

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Search, Filter, X, ChevronLeft, ChevronRight, FileText, ReceiptText } from 'lucide-react';
+import { Download, Search, Filter, X, ChevronLeft, ChevronRight, FileText, ReceiptText, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFacturasFiltradas, actualizarEstadoFactura } from '../../actions';
 import { generateInvoicePDF } from '../../../lib/generateInvoicePDF';
+import { compartirPorWhatsApp } from '../../../lib/compartirWhatsApp';
 import RangoFechas from '../../components/RangoFechas';
 import { rangoMesActual } from '../../../lib/dates';
 
@@ -62,6 +63,12 @@ export default function FacturasPage() {
   const descargarPDF = (factura: any) => {
     generateInvoicePDF(factura);
     toast.success(`Factura #${factura.num_factura} descargada`);
+  };
+
+  const enviarWhatsApp = async (factura: any) => {
+    const r = await compartirPorWhatsApp(factura);
+    if (r === 'descargado') toast.success('PDF descargado: adjúntalo en el chat de WhatsApp que se abrió');
+    else if (r === 'compartido') toast.success('Enviado a WhatsApp');
   };
 
   const cambiarEstado = async (numFactura: number, nuevoEstado: string) => {
@@ -241,13 +248,20 @@ export default function FacturasPage() {
                         <option value="Pendiente">Pendiente</option>
                       </select>
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-4 text-center whitespace-nowrap">
                       <button
                         onClick={() => descargarPDF(f)}
                         className="btn-icon p-1.5"
                         title="Descargar PDF"
                       >
                         <Download size={16} strokeWidth={1.6} />
+                      </button>
+                      <button
+                        onClick={() => enviarWhatsApp(f)}
+                        className="btn-icon p-1.5 ml-1 text-ok-deep"
+                        title="Enviar por WhatsApp"
+                      >
+                        <MessageCircle size={16} strokeWidth={1.6} />
                       </button>
                     </td>
                   </tr>
