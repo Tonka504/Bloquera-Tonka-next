@@ -26,6 +26,7 @@ function formatAccion(accion: string) {
     produccion: 'Producción',
     produccion_uso: 'Uso en producción',
     venta: 'Venta',
+    devolucion: 'Devolución (pedido eliminado)',
   };
   return map[accion] || accion;
 }
