@@ -146,15 +146,15 @@ export default function InventarioPage() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 space-y-8">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <span className="icon-plate w-12 h-12 shrink-0">
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl shrink-0">
             <Warehouse size={24} strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Materiales</p>
+            <p className="text-xs font-semibold text-safety-deep mb-1">Materiales</p>
             <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Inventario</h1>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function InventarioPage() {
         {/* Cemento */}
         <div className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-muted uppercase tracking-[0.1em]">Cemento</p>
+            <p className="text-xs text-muted tracking-normal">Cemento</p>
             <span className="icon-plate w-8 h-8"><IconoCemento size={16} /></span>
           </div>
           <p className="font-display text-3xl text-ink tabular-nums">
@@ -222,7 +222,7 @@ export default function InventarioPage() {
         {/* Arena */}
         <div className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-muted uppercase tracking-[0.1em]">Arena</p>
+            <p className="text-xs text-muted tracking-normal">Arena</p>
             <span className="icon-plate w-8 h-8"><Shovel size={16} strokeWidth={1.75} /></span>
           </div>
           <p className="font-display text-3xl text-ink tabular-nums">
@@ -243,7 +243,7 @@ export default function InventarioPage() {
           return (
             <div key={tipo} className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-muted uppercase tracking-[0.1em]">{formatTipo(tipo)}</p>
+                <p className="text-xs text-muted tracking-normal">{formatTipo(tipo)}</p>
                 <span className="icon-plate w-8 h-8"><IconoBloque size={16} /></span>
               </div>
               <p className="font-display text-3xl text-ink tabular-nums">
@@ -272,7 +272,7 @@ export default function InventarioPage() {
             </div>
             <form onSubmit={handleAbastecer} className="space-y-5">
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Cemento (bolsas)</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Cemento (bolsas)</label>
                 <input
                   type="number"
                   value={cementoAbastecer}
@@ -284,7 +284,7 @@ export default function InventarioPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Arena (m³)</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Arena (m³)</label>
                 <input
                   type="number"
                   value={arenaAbastecer}
@@ -318,7 +318,7 @@ export default function InventarioPage() {
             </div>
             <form onSubmit={handleProducir} className="space-y-5">
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Tipo de Bloque</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Tipo de Bloque</label>
                 <select
                   value={productoProducir}
                   onChange={(e) => setProductoProducir(e.target.value)}
@@ -331,7 +331,7 @@ export default function InventarioPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">
                   Cantidad de Bloques Producidos
                 </label>
                 <input
@@ -347,11 +347,11 @@ export default function InventarioPage() {
               </div>
 
               <div className="border-t border-brand-line pt-5">
-                <p className="text-xs font-medium text-ink uppercase tracking-[0.1em] mb-3">Materiales Gastados (Ingreso Manual)</p>
+                <p className="text-xs font-medium text-ink tracking-normal mb-3">Materiales Gastados (Ingreso Manual)</p>
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
+                    <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">
                       Cemento (bolsas)
                     </label>
                     <input
@@ -370,7 +370,7 @@ export default function InventarioPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
+                    <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">
                       Arena (m³)
                     </label>
                     <input

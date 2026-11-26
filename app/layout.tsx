@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 
-// Tipografía industrial: Barlow (lectura) + Barlow Condensed (títulos y cifras),
-// inspiradas en la rotulación de señalética y maquinaria.
-const barlow = Barlow({
+// Tipografía moderna y redondeada para el estilo de vidrio:
+// Manrope (lectura) + Plus Jakarta Sans (títulos y cifras).
+const cuerpo = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body",
 });
-const barlowCondensed = Barlow_Condensed({
+const titulos = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["600", "700", "800"],
   variable: "--font-display",
 });
 
@@ -31,7 +31,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={`${barlow.variable} ${barlowCondensed.variable} ${barlow.className}`}>
+      <body className={`${cuerpo.variable} ${titulos.variable} ${cuerpo.className}`}>
         {children}
         <Toaster
           position="top-center"

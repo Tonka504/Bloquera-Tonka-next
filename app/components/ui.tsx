@@ -1,6 +1,6 @@
 /**
- * Componentes visuales reutilizables del sistema "Industrial Concrete UI".
- * Los estilos base (colores, texturas, sombras, animaciones) viven en
+ * Componentes visuales reutilizables del sistema "Glass UI".
+ * Los estilos base (colores, vidrio, sombras, animaciones) viven en
  * app/globals.css; aquí solo se arman las piezas.
  */
 import Link from 'next/link';
@@ -11,6 +11,7 @@ import type { LucideIcon, LucideProps } from 'lucide-react';
 /* ------------------------------------------------------------------ */
 
 type IconProps = Omit<LucideProps, 'ref'>;
+type Icono = LucideIcon | ((p: IconProps) => React.ReactElement);
 
 function svgProps({ size = 24, strokeWidth = 1.75, className = '', ...rest }: IconProps) {
   return {
@@ -21,6 +22,8 @@ function svgProps({ size = 24, strokeWidth = 1.75, className = '', ...rest }: Ic
     fill: 'none',
     stroke: 'currentColor',
     strokeWidth,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
     className: `lucide ${className}`,
     'aria-hidden': true,
     ...rest,
@@ -44,9 +47,9 @@ export function IconoBloque(props: IconProps) {
 export function IconoPilaBloques(props: IconProps) {
   return (
     <svg {...svgProps(props)}>
-      <rect x="2.5" y="14" width="9" height="6" />
-      <rect x="12.5" y="14" width="9" height="6" />
-      <rect x="7.5" y="7" width="9" height="6" />
+      <rect x="2.5" y="14" width="9" height="6" rx="1" />
+      <rect x="12.5" y="14" width="9" height="6" rx="1" />
+      <rect x="7.5" y="7" width="9" height="6" rx="1" />
       <path d="M5 17h4M15 17h4M10 10h4" />
     </svg>
   );
@@ -74,7 +77,7 @@ export function Cargando({ texto = 'Cargando...' }: { texto?: string }) {
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="block w-[9px] rounded-[1.5px] bg-linear-to-b from-cement to-concrete-dark shadow-[inset_0_1px_0_rgba(255,255,255,.35)]"
+            className="block w-[9px] rounded-[3px] bg-linear-to-b from-[#ffb066] to-[#e0631c] shadow-[0_4px_10px_-3px_rgba(242,118,43,.6)]"
             style={{
               height: `${8 + i * 4}px`,
               animation: `block-drop 1.2s cubic-bezier(.2,.8,.2,1) ${i * 0.15}s infinite`,
@@ -82,7 +85,7 @@ export function Cargando({ texto = 'Cargando...' }: { texto?: string }) {
           />
         ))}
       </span>
-      <span className="text-sm tracking-wide">{texto}</span>
+      <span className="text-sm">{texto}</span>
     </span>
   );
 }
@@ -99,20 +102,20 @@ export function EncabezadoPagina({
 }: {
   etiqueta: string;
   titulo: string;
-  icono?: LucideIcon | ((p: IconProps) => React.ReactElement);
+  icono?: Icono;
   children?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
       <div className="flex items-center gap-4">
         {Icono && (
-          <span className="icon-plate w-12 h-12">
-            <Icono size={24} strokeWidth={1.75} />
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl">
+            <Icono size={22} strokeWidth={1.9} />
           </span>
         )}
         <div>
-          <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">{etiqueta}</p>
-          <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">{titulo}</h1>
+          <p className="text-xs font-semibold text-safety-deep mb-1">{etiqueta}</p>
+          <h1 className="font-display text-3xl sm:text-[2.1rem] text-ink leading-none">{titulo}</h1>
         </div>
       </div>
       {children}
@@ -121,7 +124,7 @@ export function EncabezadoPagina({
 }
 
 /* ------------------------------------------------------------------ */
-/* Panel con encabezado de placa metálica                              */
+/* Panel de vidrio con encabezado                                       */
 /* ------------------------------------------------------------------ */
 
 export function Panel({
@@ -133,7 +136,7 @@ export function Panel({
   cuerpo = 'p-5 sm:p-6',
 }: {
   titulo: string;
-  icono?: LucideIcon | ((p: IconProps) => React.ReactElement);
+  icono?: Icono;
   accion?: { href: string; texto: string };
   children: React.ReactNode;
   className?: string;
@@ -144,16 +147,16 @@ export function Panel({
       <header className="panel-header">
         <div className="flex items-center gap-2.5 min-w-0">
           {Icono && (
-            <span className="icon-plate w-7 h-7 rounded-[5px]">
-              <Icono size={15} strokeWidth={1.9} />
+            <span className="icon-plate w-8 h-8 rounded-xl">
+              <Icono size={16} strokeWidth={1.9} />
             </span>
           )}
-          <h3 className="font-display text-lg text-ink truncate">{titulo}</h3>
+          <h3 className="font-display text-base text-ink truncate">{titulo}</h3>
         </div>
         {accion && (
           <Link
             href={accion.href}
-            className="text-[11px] font-semibold text-muted hover:text-safety-deep uppercase tracking-[0.12em] transition-colors whitespace-nowrap"
+            className="text-xs font-semibold text-muted hover:text-safety-deep transition-colors whitespace-nowrap px-3 py-1.5 rounded-full hover:bg-white/60"
           >
             {accion.texto} →
           </Link>
@@ -165,15 +168,89 @@ export function Panel({
 }
 
 /* ------------------------------------------------------------------ */
-/* Indicador de consola (tarjeta de panel de control de la fábrica)   */
+/* Mini gráfica de línea (sparkline)                                    */
+/* ------------------------------------------------------------------ */
+
+export function MiniGrafica({ serie, color = '#f28c28', className = '' }: { serie: number[]; color?: string; className?: string }) {
+  if (serie.length < 2) return null;
+  const w = 100;
+  const h = 32;
+  const max = Math.max(...serie);
+  const min = Math.min(...serie);
+  const rango = max - min || 1;
+  const pts = serie.map((v, i) => [(i / (serie.length - 1)) * w, h - 3 - ((v - min) / rango) * (h - 6)] as const);
+  const linea = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const id = `mg-${color.replace('#', '')}`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${linea} L${w},${h} L0,${h} Z`} fill={`url(#${id})`} />
+      <path d={linea} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Anillo de progreso                                                   */
+/* ------------------------------------------------------------------ */
+
+export function AnilloProgreso({
+  porcentaje,
+  tamano = 120,
+  grosor = 10,
+  claro = false,
+  children,
+}: {
+  porcentaje: number;
+  tamano?: number;
+  grosor?: number;
+  /** true sobre fondos de color (anillo blanco) */
+  claro?: boolean;
+  children?: React.ReactNode;
+}) {
+  const p = Math.max(0, Math.min(100, porcentaje || 0));
+  const r = (tamano - grosor) / 2;
+  const largo = 2 * Math.PI * r;
+  return (
+    <div className="relative shrink-0" style={{ width: tamano, height: tamano }}>
+      <svg width={tamano} height={tamano} className="-rotate-90">
+        <circle cx={tamano / 2} cy={tamano / 2} r={r} fill="none" strokeWidth={grosor} stroke={claro ? 'rgba(255,255,255,.28)' : 'rgba(31,35,40,.08)'} />
+        <circle
+          cx={tamano / 2}
+          cy={tamano / 2}
+          r={r}
+          fill="none"
+          strokeWidth={grosor}
+          strokeLinecap="round"
+          stroke={claro ? '#fff' : '#f28c28'}
+          strokeDasharray={largo}
+          strokeDashoffset={largo * (1 - p / 100)}
+          style={{
+            transition: 'stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)',
+            filter: claro ? 'drop-shadow(0 0 6px rgba(255,255,255,.7))' : 'drop-shadow(0 0 6px rgba(242,140,40,.5))',
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Tarjeta de indicador (vidrio)                                        */
 /* ------------------------------------------------------------------ */
 
 const TONOS = {
-  safety: { led: 'bg-safety', glow: 'shadow-[0_0_10px_#f28c28]', valor: 'text-[#ffb25e]' },
-  machine: { led: 'bg-machine', glow: 'shadow-[0_0_10px_#e5b43c]', valor: 'text-[#f3cf6d]' },
-  ok: { led: 'bg-ok', glow: 'shadow-[0_0_10px_#36966a]', valor: 'text-[#6fd3a2]' },
-  alert: { led: 'bg-alert', glow: 'shadow-[0_0_10px_#d9534f]', valor: 'text-[#ff8a85]' },
-  steel: { led: 'bg-cement', glow: 'shadow-[0_0_8px_#858b8d]', valor: 'text-[#f1f0eb]' },
+  safety: { icono: 'text-safety-deep', chip: 'badge-progress', linea: '#f28c28', barra: 'bg-safety' },
+  machine: { icono: 'text-[#a3760a]', chip: 'badge-pending', linea: '#e5b43c', barra: 'bg-machine' },
+  ok: { icono: 'text-ok-deep', chip: 'badge-ok', linea: '#2f9e6a', barra: 'bg-ok' },
+  alert: { icono: 'text-alert-deep', chip: 'badge-alert', linea: '#e0574f', barra: 'bg-alert' },
+  steel: { icono: 'text-ink-soft', chip: 'badge-neutral', linea: '#5f6670', barra: 'bg-concrete-dark' },
 } as const;
 
 export type TonoConsola = keyof typeof TONOS;
@@ -186,49 +263,52 @@ export function IndicadorConsola({
   tono = 'steel',
   href,
   progreso,
+  serie,
+  chip,
   retraso = 0,
 }: {
   etiqueta: string;
   valor: string;
   detalle?: string;
-  icono: LucideIcon | ((p: IconProps) => React.ReactElement);
+  icono: Icono;
   tono?: TonoConsola;
   href?: string;
   /** 0–100: muestra una barra de nivel debajo del valor */
   progreso?: number;
+  /** valores para la mini gráfica */
+  serie?: number[];
+  /** etiqueta corta arriba a la derecha (ej. "Hoy") */
+  chip?: string;
   retraso?: number;
 }) {
   const t = TONOS[tono];
   const contenido = (
     <>
-      {/* tornillos */}
-      <span className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-[radial-gradient(circle_at_35%_35%,#9aa0a2,#2c3336)]" />
-      <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[radial-gradient(circle_at_35%_35%,#9aa0a2,#2c3336)]" />
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${t.led} ${t.glow} animate-[led-pulse_2.4s_ease-in-out_infinite]`} />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#aeb3b3] truncate">{etiqueta}</span>
-        </div>
-        <span className="icon-plate w-9 h-9 bg-none! bg-[#0f1213]! border-[#3a4245]!">
-          <Icono size={18} strokeWidth={1.75} />
+        <span className={`icon-plate w-10 h-10 rounded-full ${t.icono}`}>
+          <Icono size={18} strokeWidth={1.9} />
         </span>
+        {chip && <span className={`badge ${t.chip}`}>{chip}</span>}
       </div>
-      <p className={`font-display text-[2rem] leading-none mt-3 tabular-nums ${t.valor}`}>{valor}</p>
+      <div className="mt-4 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-display text-[1.75rem] leading-none text-ink tabular-nums truncate">{valor}</p>
+          <p className="text-sm font-medium text-muted mt-1.5">{etiqueta}</p>
+        </div>
+        {serie && serie.length > 1 && <MiniGrafica serie={serie} color={t.linea} className="w-24 h-9 shrink-0" />}
+      </div>
       {progreso !== undefined && (
-        <div className="mt-3 h-1.5 rounded-full bg-[#0c0f10] shadow-[inset_0_1px_2px_rgba(0,0,0,.6)] overflow-hidden">
-          <div className={`progress-fill ${t.led}`} style={{ width: `${Math.max(0, Math.min(100, progreso))}%` }} />
+        <div className="mt-3 progress-track h-1.5">
+          <div className={`progress-fill ${t.barra}`} style={{ width: `${Math.max(0, Math.min(100, progreso))}%` }} />
         </div>
       )}
-      {detalle && <p className="text-xs text-[#8f9596] mt-2 truncate">{detalle}</p>}
+      {detalle && <p className="text-xs text-faint mt-2 truncate">{detalle}</p>}
     </>
   );
 
   const clase =
-    'group relative block steel-surface rounded-[10px] border border-[#0b0d0e] p-5 pt-6 overflow-hidden ' +
-    'shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_10px_24px_-12px_rgba(10,12,13,.7)] ' +
-    'animate-[rise-in_.45s_cubic-bezier(.2,.8,.2,1)_backwards] transition-[transform,box-shadow] duration-200 ' +
-    'hover:-translate-y-0.5 hover:shadow-[inset_0_1px_0_rgba(255,255,255,.1),0_0_0_1px_rgba(242,140,40,.35),0_16px_30px_-12px_rgba(10,12,13,.8)]';
-
+    'group relative block glass rounded-[20px] p-5 animate-[rise-in_.5s_cubic-bezier(.2,.8,.2,1)_backwards] ' +
+    'transition-[transform,box-shadow,background] duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-[var(--shadow-2)]';
   const estilo = { animationDelay: `${retraso}s` };
 
   return href ? (

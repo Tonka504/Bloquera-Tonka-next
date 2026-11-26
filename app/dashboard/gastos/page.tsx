@@ -115,15 +115,15 @@ export default function GastosPage() {
   const totalGastos = gastosFiltrados.reduce((sum, g) => sum + Number(g.monto), 0);
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <span className="icon-plate w-12 h-12 shrink-0">
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl shrink-0">
             <HandCoins size={24} strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Operativo</p>
+            <p className="text-xs font-semibold text-safety-deep mb-1">Operativo</p>
             <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Gastos</h1>
           </div>
         </div>
@@ -178,11 +178,11 @@ export default function GastosPage() {
           <table className="table-industrial w-full">
             <thead>
               <tr className="border-b border-brand-line">
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Fecha</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Descripción</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Categoría</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Monto</th>
-                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Acciones</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Fecha</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Descripción</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Categoría</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted tracking-normal">Monto</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted tracking-normal">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-line">
@@ -248,7 +248,7 @@ export default function GastosPage() {
             </div>
             <form onSubmit={crearGasto} className="px-8 pb-8 space-y-5">
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Descripción *</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Descripción *</label>
                 <input
                   name="descripcion"
                   required
@@ -258,7 +258,7 @@ export default function GastosPage() {
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Categoría</label>
+                  <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Categoría</label>
                   <select name="categoria" className="field w-full py-2.5 text-base">
                     {CATEGORIAS.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -266,7 +266,7 @@ export default function GastosPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Monto (L.) *</label>
+                  <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Monto (L.) *</label>
                   <input
                     name="monto"
                     type="number"

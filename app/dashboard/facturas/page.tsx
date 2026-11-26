@@ -95,15 +95,15 @@ export default function FacturasPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <span className="icon-plate w-12 h-12 shrink-0">
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl shrink-0">
             <ReceiptText size={24} strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Historial</p>
+            <p className="text-xs font-semibold text-safety-deep mb-1">Historial</p>
             <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Facturas</h1>
           </div>
         </div>
@@ -134,8 +134,8 @@ export default function FacturasPage() {
         />
         <button
           onClick={() => setMostrarFiltros(!mostrarFiltros)}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm rounded-[5px] transition-all border ${
-            mostrarFiltros ? 'steel-surface text-white border-graphite shadow-[inset_0_-3px_0_var(--safety)]' : 'bg-surface border-[#b9b8b1] text-ink-soft hover:border-concrete-dark shadow-[0_1px_2px_rgba(23,27,29,.1)]'
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all border ${
+            mostrarFiltros ? 'chip-active' : 'chip'
           }`}
         >
           <Filter size={15} strokeWidth={1.6} />
@@ -154,7 +154,7 @@ export default function FacturasPage() {
         <div className="panel p-6 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
-              <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Estado</label>
+              <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Estado</label>
               <select
                 value={filtroEstado}
                 onChange={(e) => setFiltroEstado(e.target.value)}
@@ -185,14 +185,14 @@ export default function FacturasPage() {
           <table className="table-industrial w-full">
             <thead>
               <tr className="border-b border-brand-line">
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">N° Factura</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Fecha</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Cliente</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Producto</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Total</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Saldo</th>
-                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Estado</th>
-                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Acciones</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">N° Factura</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Fecha</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Cliente</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Producto</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted tracking-normal">Total</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted tracking-normal">Saldo</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted tracking-normal">Estado</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted tracking-normal">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-line">

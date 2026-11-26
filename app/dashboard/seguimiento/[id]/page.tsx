@@ -19,14 +19,14 @@ import { METODOS_PAGO, dinero, entero, fechaCorta, hoyLocal, nombreBloque, estil
 import { Cargando } from '../../../components/ui';
 const inputCls =
   'field w-full py-2.5 text-base text-ink';
-const labelCls = 'block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5';
-const thCls = 'px-5 py-3 text-[11px] font-medium text-muted uppercase tracking-[0.1em]';
-const sectionTitleCls = 'text-xs font-medium text-muted uppercase tracking-[0.15em]';
+const labelCls = 'block text-xs font-medium text-muted tracking-normal mb-1.5';
+const thCls = 'px-5 py-3 text-[11px] font-medium text-muted tracking-normal';
+const sectionTitleCls = 'text-xs font-medium text-muted tracking-normal';
 
 function Dato({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">{label}</p>
+      <p className="text-[11px] text-muted tracking-normal mb-1">{label}</p>
       <div className="text-ink">{children}</div>
     </div>
   );
@@ -35,7 +35,7 @@ function Dato({ label, children }: { label: string; children: React.ReactNode })
 function Kpi({ label, value, tone = 'text-ink' }: { label: string; value: string; tone?: string }) {
   return (
     <div className="px-6 py-5">
-      <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">{label}</p>
+      <p className="text-[11px] text-muted tracking-normal mb-1">{label}</p>
       <p className={`font-display text-2xl ${tone}`}>{value}</p>
     </div>
   );
@@ -200,7 +200,7 @@ export default function PedidoSeguimientoPage() {
   const totalEntregado = entregas.reduce((s, e) => s + Math.round(e.total * 100), 0) / 100;
 
   return (
-    <div className="px-10 py-9 relative">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7 relative">
       {/* Header */}
       <Link
         href="/dashboard/seguimiento"
@@ -210,7 +210,7 @@ export default function PedidoSeguimientoPage() {
       </Link>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-9">
         <div>
-          <p className="text-xs text-muted uppercase tracking-[0.15em] mb-1">Pedido #{pedido.id}</p>
+          <p className="text-xs text-muted tracking-normal mb-1">Pedido #{pedido.id}</p>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display text-3xl text-ink">{pedido.cliente}</h1>
             {pedido.cerrado ? (
