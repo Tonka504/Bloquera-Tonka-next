@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { ArrowLeft, Plus, X, Truck, Wallet, Printer, Package } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Plus, X, Truck, Wallet, Printer, Package, CheckCircle2, ReceiptText } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getPedidoSeguimientoDetalle,
   registrarEntregaAction,
   registrarAbonoAction,
+  cerrarPedidoSeguimientoAction,
   type PedidoSeguimientoDetalle,
   type MetodoPago,
 } from '../../../actions';
@@ -43,6 +44,8 @@ function Kpi({ label, value, tone = 'text-ink' }: { label: string; value: string
 export default function PedidoSeguimientoPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
+  const router = useRouter();
+  const [showCerrar, setShowCerrar] = useState(false);
 
   const [detalle, setDetalle] = useState<PedidoSeguimientoDetalle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -156,6 +159,35 @@ export default function PedidoSeguimientoPage() {
     }
   };
 
+  // Cierra el pedido (entregado y pagado), genera su factura y vuelve a la lista.
+  const cerrarPedido = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const valor = (nombre: string) => (form.elements.namedItem(nombre) as HTMLInputElement).value;
+
+    setGuardando(true);
+    const result = await cerrarPedidoSeguimientoAction({
+      pedido_id: pedido.id,
+      fecha: valor('fecha'),
+      identidad: valor('identidad'),
+      rtn: valor('rtn'),
+      direccion: valor('direccion'),
+    });
+    setGuardando(false);
+
+    if (result.success && result.data) {
+      toast.success(`Pedido cerrado. Factura #${result.data.num_factura} generada`, {
+        action: { label: 'Ver facturas', onClick: () => router.push('/dashboard/facturas') },
+      });
+      setShowCerrar(false);
+      router.push('/dashboard/seguimiento');
+    } else {
+      toast.error(result.message);
+    }
+  };
+
+  const listoParaCerrar = pedido.estado === 'Finalizado' && !pedido.cerrado;
+
   const abrirEntrega = () => {
     setCantidadEntrega('');
     setShowEntrega(true);
@@ -181,30 +213,69 @@ export default function PedidoSeguimientoPage() {
           <p className="text-xs text-muted uppercase tracking-[0.15em] mb-1">Pedido #{pedido.id}</p>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display text-3xl text-ink">{pedido.cliente}</h1>
-            <span className={`badge ${estiloEstado(pedido.estado)}`}>
-              {pedido.estado}
-            </span>
+            {pedido.cerrado ? (
+              <span className="badge badge-neutral">Cerrado · Factura #{pedido.num_factura}</span>
+            ) : (
+              <span className={`badge ${estiloEstado(pedido.estado)}`}>
+                {pedido.estado}
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={abrirEntrega}
-            disabled={pedido.cantidad_pendiente === 0}
-            title={pedido.cantidad_pendiente === 0 ? 'El pedido ya fue entregado completo' : undefined}
-            className="btn btn-primary flex items-center gap-2 px-5 py-2.5 text-sm tracking-wide"
-          >
-            <Plus size={16} /> Agregar entrega
-          </button>
-          <button
-            onClick={abrirAbono}
-            disabled={pedido.saldo_pendiente <= 0}
-            title={pedido.saldo_pendiente <= 0 ? 'El pedido ya está pagado' : undefined}
-            className="flex items-center gap-2 border border-brand-primary text-ink hover:bg-concrete-50 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 transition-colors text-sm tracking-wide"
-          >
-            <Plus size={16} /> Registrar abono
-          </button>
-        </div>
+        {!pedido.cerrado && (
+          <div className="flex flex-wrap gap-2">
+            {listoParaCerrar && (
+              <button
+                onClick={() => setShowCerrar(true)}
+                className="btn btn-success flex items-center gap-2 px-5 py-2.5 text-sm tracking-wide"
+              >
+                <CheckCircle2 size={16} /> Entregado · Generar factura
+              </button>
+            )}
+            <button
+              onClick={abrirEntrega}
+              disabled={pedido.cantidad_pendiente === 0}
+              title={pedido.cantidad_pendiente === 0 ? 'El pedido ya fue entregado completo' : undefined}
+              className="btn btn-primary flex items-center gap-2 px-5 py-2.5 text-sm tracking-wide"
+            >
+              <Plus size={16} /> Agregar entrega
+            </button>
+            <button
+              onClick={abrirAbono}
+              disabled={pedido.saldo_pendiente <= 0}
+              title={pedido.saldo_pendiente <= 0 ? 'El pedido ya está pagado' : undefined}
+              className="btn btn-secondary flex items-center gap-2 px-5 py-2.5 text-sm tracking-wide"
+            >
+              <Plus size={16} /> Registrar abono
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Aviso de cierre */}
+      {pedido.cerrado ? (
+        <div className="panel flex flex-wrap items-center justify-between gap-3 px-5 py-4 mb-9">
+          <span className="flex items-center gap-3 text-sm text-ink-soft">
+            <ReceiptText size={18} className="text-ok-deep" />
+            Este pedido ya se entregó, se pagó y se cerró con la factura #{pedido.num_factura}.
+          </span>
+          <Link href="/dashboard/facturas" className="text-xs font-semibold uppercase tracking-wider text-safety-deep hover:underline">
+            Ir a Facturas →
+          </Link>
+        </div>
+      ) : listoParaCerrar ? (
+        <div className="panel flex items-center gap-3 px-5 py-4 mb-9 text-sm text-ink-soft">
+          <span className="w-2 h-2 rounded-full bg-ok shadow-[0_0_8px_#36966a] shrink-0" />
+          Pedido entregado y pagado por completo. Presione &quot;Entregado · Generar factura&quot; para crear su
+          factura y sacarlo de la lista de Seguimiento.
+        </div>
+      ) : pedido.cantidad_pendiente === 0 && pedido.saldo_pendiente > 0 ? (
+        <div className="panel flex items-center gap-3 px-5 py-4 mb-9 text-sm text-ink-soft">
+          <span className="w-2 h-2 rounded-full bg-machine shadow-[0_0_8px_#e5b43c] shrink-0" />
+          Ya se entregó todo. Cuando el cliente termine de pagar ({dinero(pedido.saldo_pendiente)} pendiente) podrá
+          cerrar el pedido y generar la factura.
+        </div>
+      ) : null}
 
       {/* INFORMACIÓN GENERAL */}
       <section className="mb-9">
@@ -422,6 +493,78 @@ export default function PedidoSeguimientoPage() {
           </table>
         </div>
       </section>
+
+      {/* ========== MODAL CERRAR Y FACTURAR ========== */}
+      {showCerrar && (
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-8 pt-8 pb-4">
+              <div>
+                <h3 className="font-display text-2xl text-ink">Entregado · Generar factura</h3>
+                <p className="text-sm text-muted mt-1">
+                  Pedido #{pedido.id} — {pedido.cliente}
+                </p>
+              </div>
+              <button onClick={() => setShowCerrar(false)} className="text-muted hover:text-ink transition-colors">
+                <X size={20} strokeWidth={1.6} />
+              </button>
+            </div>
+
+            <form onSubmit={cerrarPedido} className="px-8 pb-8 space-y-5">
+              <div className="border border-brand-line divide-y divide-brand-line text-sm">
+                <div className="flex justify-between px-4 py-2.5">
+                  <span className="text-muted">Producto</span>
+                  <span className="text-ink">
+                    {entero(pedido.cantidad_total)} × {nombreBloque(pedido.tipo_bloque)}
+                  </span>
+                </div>
+                <div className="flex justify-between px-4 py-2.5">
+                  <span className="text-muted">Entregado</span>
+                  <span className="text-ok-deep">{entero(pedido.cantidad_entregada)} de {entero(pedido.cantidad_total)}</span>
+                </div>
+                <div className="flex justify-between px-4 py-2.5 bg-concrete-50 font-medium">
+                  <span className="text-ink">Total pagado</span>
+                  <span className="text-ink">{dinero(pedido.total_abonado)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Fecha de la factura *</label>
+                <input name="fecha" type="date" required defaultValue={hoyLocal()} className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className={labelCls}>Identidad</label>
+                  <input name="identidad" className={inputCls} placeholder="Opcional" />
+                </div>
+                <div>
+                  <label className={labelCls}>RTN</label>
+                  <input name="rtn" className={inputCls} placeholder="Opcional" />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Dirección</label>
+                <input name="direccion" className={inputCls} placeholder="SANTA BARBARA, S.B., HONDURAS" />
+              </div>
+
+              <p className="text-xs text-muted leading-relaxed">
+                Se creará la factura como <strong className="text-ink-soft">Pagada</strong> y el pedido saldrá de la lista
+                de Seguimiento (lo puede ver en el filtro &quot;Facturados&quot;). El inventario no cambia: ya se descontó
+                con cada entrega.
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowCerrar(false)} className="btn btn-secondary flex-1 py-3 text-sm">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={guardando} className="btn btn-success flex-1 py-3 text-sm tracking-wide">
+                  {guardando ? 'Generando...' : 'Generar factura'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ========== MODAL AGREGAR ENTREGA ========== */}
       {showEntrega && (

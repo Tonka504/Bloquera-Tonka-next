@@ -15,7 +15,9 @@ import {
 import { TIPOS_BLOQUE, dinero, entero, fechaCorta, hoyLocal, nombreBloque, estiloEstado } from './formato';
 
 import { Cargando } from '../../components/ui';
-const FILTROS = ['Todos', 'Pendiente', 'En proceso', 'Entregado', 'Pagado', 'Finalizado'] as const;
+// "Facturados" muestra los pedidos ya cerrados (entregados, pagados y con factura);
+// los demás filtros solo muestran pedidos activos.
+const FILTROS = ['Todos', 'Pendiente', 'En proceso', 'Entregado', 'Pagado', 'Finalizado', 'Facturados'] as const;
 
 const inputCls =
   'field w-full py-2.5 text-base text-ink';
@@ -104,19 +106,26 @@ export default function SeguimientoPage() {
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return pedidos.filter((p) => {
-      if (filtro !== 'Todos' && p.estado !== filtro) return false;
+      if (filtro === 'Facturados') {
+        if (!p.cerrado) return false;
+      } else {
+        if (p.cerrado) return false;
+        if (filtro !== 'Todos' && p.estado !== filtro) return false;
+      }
       if (!q) return true;
       return p.cliente.toLowerCase().includes(q) || String(p.id).includes(q);
     });
   }, [pedidos, busqueda, filtro]);
 
+  const activos = useMemo(() => pedidos.filter((p) => !p.cerrado), [pedidos]);
   const totales = useMemo(
     () => ({
-      activos: pedidos.filter((p) => p.estado !== 'Finalizado').length,
-      bloquesPendientes: pedidos.reduce((s, p) => s + p.cantidad_pendiente, 0),
-      saldo: pedidos.reduce((s, p) => s + Math.round(p.saldo_pendiente * 100), 0) / 100,
+      activos: activos.filter((p) => p.estado !== 'Finalizado').length,
+      porCerrar: activos.filter((p) => p.estado === 'Finalizado').length,
+      bloquesPendientes: activos.reduce((s, p) => s + p.cantidad_pendiente, 0),
+      saldo: activos.reduce((s, p) => s + Math.round(p.saldo_pendiente * 100), 0) / 100,
     }),
-    [pedidos]
+    [activos]
   );
 
   return (
@@ -155,6 +164,22 @@ export default function SeguimientoPage() {
           <p className="font-display text-2xl text-alert-deep">{dinero(totales.saldo)}</p>
         </div>
       </div>
+
+      {/* Aviso: pedidos entregados y pagados que falta cerrar */}
+      {totales.porCerrar > 0 && filtro !== 'Finalizado' && (
+        <button
+          onClick={() => setFiltro('Finalizado')}
+          className="panel w-full flex items-center justify-between gap-3 px-5 py-3.5 mb-8 text-left hover:border-ok transition-colors"
+        >
+          <span className="flex items-center gap-3 text-sm text-ink-soft">
+            <span className="w-2 h-2 rounded-full bg-ok shadow-[0_0_8px_#36966a]" />
+            {totales.porCerrar === 1
+              ? 'Hay 1 pedido entregado y pagado listo para cerrar y facturar.'
+              : `Hay ${totales.porCerrar} pedidos entregados y pagados listos para cerrar y facturar.`}
+          </span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-ok-deep whitespace-nowrap">Ver →</span>
+        </button>
+      )}
 
       {/* Búsqueda + filtros */}
       <div className="flex flex-col lg:flex-row lg:items-end gap-5 mb-8">
@@ -214,7 +239,11 @@ export default function SeguimientoPage() {
                 <tr>
                   <td colSpan={9} className="text-center py-16 text-faint">
                     <ClipboardList size={32} strokeWidth={1.4} className="mx-auto mb-3 text-faint-2" />
-                    {pedidos.length === 0 ? 'No hay pedidos registrados' : 'No se encontraron pedidos'}
+                    {filtro === 'Facturados'
+                      ? 'Todavía no hay pedidos cerrados y facturados'
+                      : activos.length === 0
+                        ? 'No hay pedidos activos'
+                        : 'No se encontraron pedidos'}
                   </td>
                 </tr>
               ) : (
@@ -247,9 +276,13 @@ export default function SeguimientoPage() {
                       {dinero(p.saldo_pendiente)}
                     </td>
                     <td className="px-5 py-4 text-center">
-                      <span className={`badge ${estiloEstado(p.estado)}`}>
-                        {p.estado}
-                      </span>
+                      {p.cerrado ? (
+                        <span className="badge badge-neutral">Factura #{p.num_factura}</span>
+                      ) : (
+                        <span className={`badge ${estiloEstado(p.estado)}`}>
+                          {p.estado}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-center">
                       <Link
@@ -266,7 +299,9 @@ export default function SeguimientoPage() {
           </table>
         </div>
         <div className="px-5 py-3 border-t border-brand-line text-xs text-muted">
-          Mostrando {filtrados.length} de {pedidos.length} pedidos
+          {filtro === 'Facturados'
+            ? `${filtrados.length} pedidos cerrados y facturados`
+            : `Mostrando ${filtrados.length} de ${activos.length} pedidos activos`}
         </div>
       </div>
 
