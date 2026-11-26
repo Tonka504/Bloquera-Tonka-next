@@ -153,6 +153,31 @@ function sumarPorMes(...series: { mes: string; total: number | string }[][]) {
   return Array.from(acc, ([mes, total]) => ({ mes, total })).sort((a, b) => a.mes.localeCompare(b.mes));
 }
 
+// --- Cierre de pedidos de Seguimiento (sql/2026-11-26_cerrar_pedidos_seguimiento.sql) ---
+// Al cerrar un pedido de Seguimiento se genera su factura en historial_facturas con
+// seguimiento_id. Esas ventas YA se cuentan por sus entregas (en su fecha real), así que
+// las sumas de ventas sobre historial_facturas las excluyen para no contarlas dos veces.
+// Se comprueba que las columnas existan para que nada falle si la migración aún no se corrió.
+let cierreDisponible = false;
+async function hayCierreSeguimiento(): Promise<boolean> {
+  if (cierreDisponible) return true;
+  try {
+    const [r] = await sql`
+      SELECT COUNT(*)::int AS n
+      FROM information_schema.columns
+      WHERE (table_name = 'pedidos_seguimiento' AND column_name IN ('num_factura', 'cerrado_en'))
+         OR (table_name = 'historial_facturas' AND column_name = 'seguimiento_id')
+    `;
+    cierreDisponible = Number((r as any)?.n) === 3;
+  } catch (e) {
+    console.log('Error revisando columnas de cierre:', e);
+  }
+  return cierreDisponible;
+}
+
+// Filtro para sumas de ventas: deja fuera las facturas generadas desde Seguimiento.
+const sinSeguimiento = (cierre: boolean) => (cierre ? sql`AND seguimiento_id IS NULL` : sql``);
+
 // --- Seguimiento de pedidos (entregas parciales + abonos) ---
 export type EstadoEntrega = 'Pendiente' | 'En proceso' | 'Entregado';
 export type EstadoPagoSeguimiento = 'Pendiente' | 'Parcial' | 'Pagado';
@@ -177,6 +202,9 @@ export type PedidoSeguimiento = {
   estado_entrega: EstadoEntrega;
   estado_pago: EstadoPagoSeguimiento;
   estado: EstadoPedidoSeguimiento;
+  // Cierre: al entregar y pagar todo se genera la factura y el pedido sale de la lista activa.
+  num_factura: number | null;
+  cerrado: boolean;
 };
 
 export type EntregaPedido = {
@@ -249,12 +277,14 @@ export async function getDashboardResumen(
   let ventasPorMes: { mes: string; total: number }[] = [];
   let stockBajo: { tipo: string; cantidad: number }[] = [];
   let facturasPendientes: { num_factura: number; cliente: string; saldo_pendiente: number; fecha_despacho: string }[] = [];
+  const cierre = await hayCierreSeguimiento();
 
   try {
     const ventasResult = await sql`
       SELECT COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE 1=1
+        ${sinSeguimiento(cierre)}
         ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
         ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
     `;
@@ -343,6 +373,7 @@ export async function getDashboardResumen(
         COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE fecha_despacho >= (CURRENT_DATE - INTERVAL '5 months')
+        ${sinSeguimiento(cierre)}
       GROUP BY DATE_TRUNC('month', fecha_despacho::date)
       ORDER BY mes ASC
     ` as unknown as { mes: string; total: number }[];
@@ -448,7 +479,7 @@ export async function getDashboardResumen(
   try {
     const filtroDia = (col: string) =>
       dia ? sql`${sql(col)}::date = ${dia}::date` : sql`${sql(col)}::date = CURRENT_DATE`;
-    const [f] = await sql`SELECT COALESCE(SUM(total_venta), 0) AS total FROM historial_facturas WHERE ${filtroDia('fecha_despacho')}`;
+    const [f] = await sql`SELECT COALESCE(SUM(total_venta), 0) AS total FROM historial_facturas WHERE ${filtroDia('fecha_despacho')} ${sinSeguimiento(cierre)}`;
     const [e] = await sql`SELECT COALESCE(SUM(total), 0) AS total FROM entregas_pedido WHERE ${filtroDia('fecha')}`;
     operacion.ventasHoy = Number((f as any)?.total || 0) + Number((e as any)?.total || 0);
   } catch (e) {
@@ -483,6 +514,7 @@ export async function getDashboardResumen(
       SELECT COALESCE(SUM(total_venta - saldo_pendiente), 0) AS total
       FROM historial_facturas
       WHERE 1=1
+        ${sinSeguimiento(cierre)}
         ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
         ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
     `;
@@ -949,12 +981,14 @@ export async function getReporteGeneral(
   let ventasPorMes: { mes: string; total: number }[] = [];
   let gastosPorCategoria: { categoria: string; total: number }[] = [];
   let topClientes: { cliente: string; total: number }[] = [];
+  const cierre = await hayCierreSeguimiento();
 
   try {
     const ventas = await sql`
       SELECT COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE 1=1
+        ${sinSeguimiento(cierre)}
         ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
         ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
     `;
@@ -1070,6 +1104,7 @@ export async function getReporteGeneral(
         COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE 1=1
+        ${sinSeguimiento(cierre)}
         ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
         ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
       GROUP BY SUBSTRING(fecha_despacho::text, 1, 7)
@@ -1112,6 +1147,7 @@ export async function getReporteGeneral(
       SELECT cliente, COALESCE(SUM(total_venta), 0) as total
       FROM historial_facturas
       WHERE 1=1
+        ${sinSeguimiento(cierre)}
         ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
         ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
       GROUP BY cliente
@@ -1178,6 +1214,7 @@ export async function getCostosProduccion(
   fechaHasta?: string
 ): Promise<ServerResult<CostosProduccion>> {
   const r2 = (n: number) => Math.round(n * 100) / 100;
+  const cierre = await hayCierreSeguimiento();
 
   let precioCemento = 0;
   let precioArena = 0;
@@ -1258,6 +1295,7 @@ export async function getCostosProduccion(
           cantidad, total_venta
         FROM historial_facturas
         WHERE 1=1
+          ${sinSeguimiento(cierre)}
           ${fechaDesde ? sql`AND fecha_despacho >= ${fechaDesde}` : sql``}
           ${fechaHasta ? sql`AND fecha_despacho <= ${fechaHasta}` : sql``}
       ) f
@@ -1461,15 +1499,25 @@ function calcularPedidoSeguimiento(row: any): PedidoSeguimiento {
     estado_entrega,
     estado_pago,
     estado,
+    num_factura: row.num_factura != null ? Number(row.num_factura) : null,
+    cerrado: Boolean(row.cerrado),
   };
 }
 
+// Columnas de cierre en los SELECT de pedidos_seguimiento (valores por defecto sin migración).
+const columnasCierre = (cierre: boolean) =>
+  cierre
+    ? sql`p.num_factura, (p.cerrado_en IS NOT NULL) AS cerrado,`
+    : sql`NULL::int AS num_factura, false AS cerrado,`;
+
 export async function getPedidosSeguimiento(): Promise<ServerResult<PedidoSeguimiento[]>> {
   try {
+    const cierre = await hayCierreSeguimiento();
     const rows = await sql`
       SELECT
         p.id, p.cliente, TO_CHAR(p.fecha, 'YYYY-MM-DD') AS fecha, p.tipo_bloque,
         p.cantidad_total, p.precio_unitario, p.total, p.observaciones,
+        ${columnasCierre(cierre)}
         COALESCE(e.entregado, 0) AS cantidad_entregada,
         COALESCE(a.abonado, 0) AS total_abonado
       FROM pedidos_seguimiento p
@@ -1496,10 +1544,12 @@ export async function getPedidoSeguimientoDetalle(
       return { success: false, message: 'Número de pedido inválido' };
     }
 
+    const cierre = await hayCierreSeguimiento();
     const rows = await sql`
       SELECT
         p.id, p.cliente, TO_CHAR(p.fecha, 'YYYY-MM-DD') AS fecha, p.tipo_bloque,
         p.cantidad_total, p.precio_unitario, p.total, p.observaciones,
+        ${columnasCierre(cierre)}
         (SELECT COALESCE(SUM(cantidad), 0) FROM entregas_pedido WHERE pedido_id = p.id) AS cantidad_entregada,
         (SELECT COALESCE(SUM(monto), 0) FROM abonos_pedido WHERE pedido_id = p.id) AS total_abonado
       FROM pedidos_seguimiento p
@@ -1837,4 +1887,82 @@ export async function pasarPedidosASeguimientoAction(
   }
 
   return { success: movidos.length > 0, data: { movidos, errores }, message: errores.join('\n') || undefined };
+}
+
+// Cierra un pedido de Seguimiento ya ENTREGADO y PAGADO por completo:
+//  - genera su factura en historial_facturas (Pagado, saldo 0) marcada con seguimiento_id,
+//  - marca el pedido como cerrado (cerrado_en + num_factura) para que salga de la lista activa.
+// No toca inventario (ya se descontó con cada entrega) ni borra el historial de entregas/abonos,
+// que sigue siendo la fuente de las ventas por fecha en Dashboard y Reportes.
+export async function cerrarPedidoSeguimientoAction(datos: {
+  pedido_id: number;
+  fecha: string;
+  identidad?: string;
+  rtn?: string;
+  direccion?: string;
+}): Promise<ServerResult<{ num_factura: number }>> {
+  if (!Number.isInteger(datos.pedido_id) || datos.pedido_id <= 0) {
+    return { success: false, message: 'Número de pedido inválido' };
+  }
+  if (!esFechaValida(datos.fecha)) {
+    return { success: false, message: 'La fecha de la factura no es válida' };
+  }
+  if (!(await hayCierreSeguimiento())) {
+    return {
+      success: false,
+      message: 'Falta activar esta función en la base de datos (sql/2026-11-26_cerrar_pedidos_seguimiento.sql).',
+    };
+  }
+
+  try {
+    const numFactura = await sql.begin(async (tx: any) => {
+      const pedidos = await tx`
+        SELECT id, cliente, tipo_bloque, cantidad_total, total, cerrado_en
+        FROM pedidos_seguimiento WHERE id = ${datos.pedido_id} FOR UPDATE
+      `;
+      if (pedidos.length === 0) throw new ErrorSeguimiento('Pedido no encontrado');
+      const p = pedidos[0];
+      if (p.cerrado_en) throw new ErrorSeguimiento('Este pedido ya está cerrado y facturado');
+
+      const [ent] = await tx`SELECT COALESCE(SUM(cantidad), 0) AS n FROM entregas_pedido WHERE pedido_id = ${p.id}`;
+      const [abo] = await tx`SELECT COALESCE(SUM(monto), 0) AS m FROM abonos_pedido WHERE pedido_id = ${p.id}`;
+      const pendiente = Number(p.cantidad_total) - Number(ent.n);
+      const saldoCentavos = aCentavos(p.total) - aCentavos(abo.m);
+      if (pendiente > 0) {
+        throw new ErrorSeguimiento(`Todavía faltan ${pendiente} bloques por entregar`);
+      }
+      if (saldoCentavos > 0) {
+        throw new ErrorSeguimiento(
+          `El cliente todavía debe L. ${(saldoCentavos / 100).toFixed(2)}. Registre los abonos antes de cerrar.`
+        );
+      }
+
+      const total = aCentavos(p.total) / 100;
+      const producto = String(p.tipo_bloque).replace('bloque_de_', 'Bloque de ');
+      const factura = await tx`
+        INSERT INTO historial_facturas
+          (fecha_despacho, cliente, producto, cantidad, subtotal, descuento_tipo, descuento_valor, descuento_monto,
+           total_venta, estado, anticipo, saldo_pendiente, identidad, rtn, direccion, seguimiento_id)
+        VALUES (
+          ${datos.fecha}, ${p.cliente}, ${producto}, ${Number(p.cantidad_total)}, ${total},
+          'ninguno', 0, 0, ${total}, 'Pagado', ${total}, 0,
+          ${String(datos.identidad || '').trim()}, ${String(datos.rtn || '').trim()},
+          ${String(datos.direccion || '').trim() || 'SANTA BARBARA, S.B., HONDURAS'},
+          ${p.id}
+        )
+        RETURNING num_factura
+      `;
+      const num = Number(factura[0].num_factura);
+      await tx`
+        UPDATE pedidos_seguimiento SET cerrado_en = NOW(), num_factura = ${num} WHERE id = ${p.id}
+      `;
+      return num;
+    });
+
+    return { success: true, data: { num_factura: Number(numFactura) } };
+  } catch (error) {
+    if (error instanceof ErrorSeguimiento) return { success: false, message: error.message };
+    console.error('Error en cerrarPedidoSeguimientoAction:', error);
+    return { success: false, message: 'Error al cerrar el pedido' };
+  }
 }
