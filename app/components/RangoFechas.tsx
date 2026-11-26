@@ -21,10 +21,10 @@ export default function RangoFechas({
     <div className="flex items-center gap-4 flex-wrap">
       <div className="flex items-center gap-2 text-muted">
         <Calendar size={14} strokeWidth={1.6} />
-        <span className="text-xs uppercase tracking-[0.1em]">Periodo</span>
+        <span className="text-xs tracking-normal">Periodo</span>
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Desde</label>
+        <label className="text-xs font-medium text-muted tracking-normal">Desde</label>
         <input
           type="date"
           value={fechaDesde}
@@ -34,7 +34,7 @@ export default function RangoFechas({
         />
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Hasta</label>
+        <label className="text-xs font-medium text-muted tracking-normal">Hasta</label>
         <input
           type="date"
           value={fechaHasta}

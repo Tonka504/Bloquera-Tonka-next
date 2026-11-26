@@ -55,19 +55,19 @@ export default function ConfigPage() {
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 flex items-center justify-center gap-3 text-muted">
+      <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7 flex items-center justify-center gap-3 text-muted">
         <Cargando texto="Cargando configuración..." /></div>
     );
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 max-w-3xl">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7 max-w-3xl">
       <div className=" mb-8 lg:mb-10 flex items-center gap-4">
-          <span className="icon-plate w-12 h-12 shrink-0">
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl shrink-0">
             <Cog size={24} strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Ajustes</p>
+            <p className="text-xs font-semibold text-safety-deep mb-1">Ajustes</p>
             <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Configuración</h1>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function ConfigPage() {
           <h3 className="font-display text-lg mb-6 text-ink">Parámetros de Producción</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Bloques por bolsa de cemento</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Bloques por bolsa de cemento</label>
               <input
                 type="number"
                 step="0.1"
@@ -91,7 +91,7 @@ export default function ConfigPage() {
               <p className="text-xs text-faint mt-2">Cantidad de bloques que se producen con una bolsa de cemento</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Arena por 100 bloques (m³)</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Arena por 100 bloques (m³)</label>
               <input
                 type="number"
                 step="0.01"
@@ -112,7 +112,7 @@ export default function ConfigPage() {
           <h3 className="font-display text-lg mb-6 text-ink">Precios de Venta</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio Bloque 4&quot;</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Precio Bloque 4&quot;</label>
               <div className="relative mt-2">
                 <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
                 <input
@@ -126,7 +126,7 @@ export default function ConfigPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio Bloque 5&quot;</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Precio Bloque 5&quot;</label>
               <div className="relative mt-2">
                 <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
                 <input
@@ -140,7 +140,7 @@ export default function ConfigPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio Bloque 6&quot;</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Precio Bloque 6&quot;</label>
               <div className="relative mt-2">
                 <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
                 <input
@@ -164,7 +164,7 @@ export default function ConfigPage() {
           <p className="text-xs text-faint mb-6">Lo que pagas al comprar. Se usa para calcular el costo y la ganancia por bloque en Reportes.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio por bolsa de cemento</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Precio por bolsa de cemento</label>
               <div className="relative mt-2">
                 <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
                 <input
@@ -178,7 +178,7 @@ export default function ConfigPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Precio por m³ de arena</label>
+              <label className="text-xs font-medium text-muted tracking-normal">Precio por m³ de arena</label>
               <div className="relative mt-2">
                 <span className="absolute left-3 top-1/2 pointer-events-none -translate-y-1/2 text-muted">L.</span>
                 <input

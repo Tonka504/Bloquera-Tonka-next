@@ -285,15 +285,15 @@ export default function PedidosPage() {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 py-6 lg:py-9 relative">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7 relative">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-9">
         <div className="flex items-center gap-4">
-          <span className="icon-plate w-12 h-12 shrink-0">
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl shrink-0">
             <ClipboardList size={24} strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Gestión</p>
+            <p className="text-xs font-semibold text-safety-deep mb-1">Gestión</p>
             <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Pedidos</h1>
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function PedidosPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-muted uppercase tracking-[0.1em]">Orden</label>
+          <label className="text-xs font-medium text-muted tracking-normal">Orden</label>
           <select
             value={orden}
             onChange={(e) => setOrden(e.target.value as 'reciente' | 'antiguo')}
@@ -346,15 +346,15 @@ export default function PedidosPage() {
           <table className="table-industrial w-full">
             <thead>
               <tr className="border-b border-brand-line">
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">ID</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Cliente</th>
-                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Producto</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Cantidad</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Precio</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Total</th>
-                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Estado</th>
-                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Pago</th>
-                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted uppercase tracking-[0.1em]">Acciones</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">ID</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Cliente</th>
+                <th className="px-5 py-3.5 text-left text-[11px] font-medium text-muted tracking-normal">Producto</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted tracking-normal">Cantidad</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted tracking-normal">Precio</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-medium text-muted tracking-normal">Total</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted tracking-normal">Estado</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted tracking-normal">Pago</th>
+                <th className="px-5 py-3.5 text-center text-[11px] font-medium text-muted tracking-normal">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-line">
@@ -468,7 +468,7 @@ export default function PedidosPage() {
 
             <form onSubmit={crearPedido} className="px-8 pb-8 space-y-5">
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Cliente *</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Cliente *</label>
                 <input
                   name="cliente"
                   required
@@ -478,7 +478,7 @@ export default function PedidosPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Producto</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Producto</label>
                 <select
                   name="producto"
                   className="field w-full py-2.5 text-base text-ink"
@@ -491,7 +491,7 @@ export default function PedidosPage() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Cantidad *</label>
+                  <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Cantidad *</label>
                   <input
                     name="cantidad"
                     type="number"
@@ -502,7 +502,7 @@ export default function PedidosPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Precio Unit. (L.) *</label>
+                  <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Precio Unit. (L.) *</label>
                   <input
                     name="precio"
                     type="number"
@@ -517,7 +517,7 @@ export default function PedidosPage() {
 
               {/* Descuento */}
               <div className="border-t border-brand-line pt-5">
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Descuento</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Descuento</label>
                 <select
                   value={npDescuentoTipo}
                   onChange={(e) => { setNpDescuentoTipo(e.target.value as DescuentoTipo); setNpDescuentoTocado(true); }}
@@ -538,7 +538,7 @@ export default function PedidosPage() {
 
                 {(npDescuentoTipo === 'porcentaje' || npDescuentoTipo === 'monto') && (
                   <div className="mt-3">
-                    <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
+                    <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">
                       {npDescuentoTipo === 'porcentaje' ? 'Porcentaje de descuento (%)' : 'Monto de descuento (L.)'}
                     </label>
                     <input
@@ -573,7 +573,7 @@ export default function PedidosPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Estado de Pago</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Estado de Pago</label>
                 <select
                   name="estado_pago"
                   value={estadoPago}
@@ -588,7 +588,7 @@ export default function PedidosPage() {
 
               {estadoPago === "Con Anticipo" && (
                 <div>
-                  <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Monto del Anticipo (L.)</label>
+                  <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Monto del Anticipo (L.)</label>
                   <input
                     name="anticipo"
                     type="number"
@@ -640,7 +640,7 @@ export default function PedidosPage() {
 
             {/* DESCUENTO */}
             <div className="mx-8 mb-6">
-              <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Descuento</label>
+              <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Descuento</label>
               <select
                 value={despDescuentoTipo}
                 onChange={(e) => setDespDescuentoTipo(e.target.value as DescuentoTipo)}
@@ -661,7 +661,7 @@ export default function PedidosPage() {
 
               {(despDescuentoTipo === 'porcentaje' || despDescuentoTipo === 'monto') && (
                 <div className="mt-3">
-                  <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">
+                  <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">
                     {despDescuentoTipo === 'porcentaje' ? 'Porcentaje de descuento (%)' : 'Monto de descuento (L.)'}
                   </label>
                   <input
@@ -680,7 +680,7 @@ export default function PedidosPage() {
 
             {/* RESUMEN DE PAGO */}
             <div className="mx-8 mb-6">
-              <h4 className="text-xs font-medium text-muted uppercase tracking-[0.12em] mb-3">Resumen de Pago</h4>
+              <h4 className="text-xs font-medium text-muted tracking-normal mb-3">Resumen de Pago</h4>
               <div className="panel divide-y divide-brand-line">
                 <div className="flex justify-between items-center px-5 py-3">
                   <span className="text-sm text-muted">Producto</span>
@@ -737,7 +737,7 @@ export default function PedidosPage() {
 
             <form onSubmit={confirmarDespacho} className="px-8 pb-8 space-y-5">
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Fecha de Despacho *</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Fecha de Despacho *</label>
                 <input
                   name="fecha_despacho"
                   type="date"
@@ -748,7 +748,7 @@ export default function PedidosPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Identidad del Cliente</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Identidad del Cliente</label>
                 <input
                   name="identidad"
                   type="text"
@@ -758,7 +758,7 @@ export default function PedidosPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">RTN</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">RTN</label>
                 <input
                   name="rtn"
                   type="text"
@@ -768,7 +768,7 @@ export default function PedidosPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5">Dirección</label>
+                <label className="block text-xs font-medium text-muted tracking-normal mb-1.5">Dirección</label>
                 <input
                   name="direccion"
                   type="text"

@@ -22,8 +22,8 @@ const FILTROS = ['Todos', 'Pendiente', 'En proceso', 'Entregado', 'Pagado', 'Fin
 
 const inputCls =
   'field w-full py-2.5 text-base text-ink';
-const labelCls = 'block text-xs font-medium text-muted uppercase tracking-[0.1em] mb-1.5';
-const thCls = 'px-5 py-3.5 text-[11px] font-medium text-muted uppercase tracking-[0.1em]';
+const labelCls = 'block text-xs font-medium text-muted tracking-normal mb-1.5';
+const thCls = 'px-5 py-3.5 text-[11px] font-medium text-muted tracking-normal';
 
 function precioConfig(config: Configuracion | null, tipo: string) {
   if (!config) return '';
@@ -159,15 +159,15 @@ export default function SeguimientoPage() {
   );
 
   return (
-    <div className="px-10 py-9 relative">
+    <div className="px-4 sm:px-6 lg:pl-2 lg:pr-6 py-6 lg:py-7 relative">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-9">
         <div className="flex items-center gap-4">
-          <span className="icon-plate w-12 h-12 shrink-0">
+          <span className="icon-plate icon-plate-accent w-12 h-12 rounded-2xl shrink-0">
             <Truck size={24} strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-safety-deep uppercase tracking-[0.2em] mb-0.5">Entregas parciales y saldos</p>
+            <p className="text-xs font-semibold text-safety-deep mb-1">Entregas parciales y saldos</p>
             <h1 className="font-display text-3xl sm:text-4xl text-ink leading-none">Seguimiento de Pedidos</h1>
           </div>
         </div>
@@ -182,15 +182,15 @@ export default function SeguimientoPage() {
       {/* Resumen */}
       <div className="grid grid-cols-1 sm:grid-cols-3 kpi-grid mb-9">
         <div className="px-6 py-5">
-          <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">Pedidos activos</p>
+          <p className="text-[11px] text-muted tracking-normal mb-1">Pedidos activos</p>
           <p className="font-display text-2xl text-ink">{entero(totales.activos)}</p>
         </div>
         <div className="px-6 py-5">
-          <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">Bloques por entregar</p>
+          <p className="text-[11px] text-muted tracking-normal mb-1">Bloques por entregar</p>
           <p className="font-display text-2xl text-ink">{entero(totales.bloquesPendientes)}</p>
         </div>
         <div className="px-6 py-5">
-          <p className="text-[11px] text-muted uppercase tracking-[0.12em] mb-1">Saldo por cobrar</p>
+          <p className="text-[11px] text-muted tracking-normal mb-1">Saldo por cobrar</p>
           <p className="font-display text-2xl text-alert-deep">{dinero(totales.saldo)}</p>
         </div>
       </div>
@@ -228,10 +228,10 @@ export default function SeguimientoPage() {
             <button
               key={f}
               onClick={() => setFiltro(f)}
-              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-[5px] border transition-all ${
+              className={`px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all ${
                 filtro === f
-                  ? 'steel-surface text-white border-graphite shadow-[inset_0_-3px_0_var(--safety)]'
-                  : 'bg-surface border-[#b9b8b1] text-ink-soft hover:border-safety hover:text-ink'
+                  ? 'chip-active'
+                  : 'chip'
               }`}
             >
               {f}
