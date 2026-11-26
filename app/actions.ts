@@ -1966,3 +1966,56 @@ export async function cerrarPedidoSeguimientoAction(datos: {
     return { success: false, message: 'Error al cerrar el pedido' };
   }
 }
+
+// Elimina un pedido de Seguimiento que todavía no está cerrado (sin factura), junto con su
+// historial de entregas y abonos, en una sola transacción.
+// Si tenía entregas y devolverInventario es true, los bloques entregados regresan al
+// inventario (y queda anotado en historial_inventario como 'devolucion').
+// Las ventas y abonos de ese pedido dejan de contar en Dashboard y Reportes.
+export async function eliminarPedidoSeguimientoAction(
+  id: number,
+  devolverInventario: boolean
+): Promise<ServerResult<{ bloquesDevueltos: number }>> {
+  if (!Number.isInteger(id) || id <= 0) {
+    return { success: false, message: 'Número de pedido inválido' };
+  }
+
+  try {
+    const cierre = await hayCierreSeguimiento();
+    const devueltos = await sql.begin(async (tx: any) => {
+      const pedidos = await tx`
+        SELECT id, tipo_bloque, ${cierre ? tx`num_factura, cerrado_en` : tx`NULL AS num_factura, NULL AS cerrado_en`}
+        FROM pedidos_seguimiento WHERE id = ${id} FOR UPDATE
+      `;
+      if (pedidos.length === 0) throw new ErrorSeguimiento('Pedido no encontrado');
+      const p = pedidos[0];
+      if (p.cerrado_en) {
+        throw new ErrorSeguimiento(`Este pedido ya está cerrado con la factura #${p.num_factura} y no se puede eliminar`);
+      }
+
+      const [ent] = await tx`SELECT COALESCE(SUM(cantidad), 0) AS n FROM entregas_pedido WHERE pedido_id = ${id}`;
+      const entregado = Number(ent.n);
+
+      let bloques = 0;
+      if (devolverInventario && entregado > 0) {
+        await tx`UPDATE inventario SET cantidad = cantidad + ${entregado} WHERE tipo = ${p.tipo_bloque}`;
+        await tx`
+          INSERT INTO historial_inventario (tipo, cantidad, accion, fecha)
+          VALUES (${p.tipo_bloque}, ${entregado}, 'devolucion', NOW())
+        `;
+        bloques = entregado;
+      }
+
+      await tx`DELETE FROM abonos_pedido WHERE pedido_id = ${id}`;
+      await tx`DELETE FROM entregas_pedido WHERE pedido_id = ${id}`;
+      await tx`DELETE FROM pedidos_seguimiento WHERE id = ${id}`;
+      return bloques;
+    });
+
+    return { success: true, data: { bloquesDevueltos: Number(devueltos) } };
+  } catch (error) {
+    if (error instanceof ErrorSeguimiento) return { success: false, message: error.message };
+    console.error('Error en eliminarPedidoSeguimientoAction:', error);
+    return { success: false, message: 'Error al eliminar el pedido' };
+  }
+}

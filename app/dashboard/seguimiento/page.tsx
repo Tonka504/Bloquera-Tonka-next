@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, X, ClipboardList, ArrowRight, Truck } from 'lucide-react';
+import { Plus, Search, X, ClipboardList, ArrowRight, Truck, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getPedidosSeguimiento,
   crearPedidoSeguimientoAction,
+  eliminarPedidoSeguimientoAction,
   getConfiguracion,
   type PedidoSeguimiento,
   type Configuracion,
@@ -43,6 +44,35 @@ export default function SeguimientoPage() {
   const [tipo, setTipo] = useState(TIPOS_BLOQUE[0].value);
   const [cantidad, setCantidad] = useState('');
   const [precio, setPrecio] = useState('');
+
+  // Eliminar pedido
+  const [aEliminar, setAEliminar] = useState<PedidoSeguimiento | null>(null);
+  const [devolverInventario, setDevolverInventario] = useState(true);
+  const [eliminando, setEliminando] = useState(false);
+
+  const pedirEliminar = (p: PedidoSeguimiento) => {
+    setDevolverInventario(true);
+    setAEliminar(p);
+  };
+
+  const confirmarEliminar = async () => {
+    if (!aEliminar) return;
+    setEliminando(true);
+    const result = await eliminarPedidoSeguimientoAction(aEliminar.id, devolverInventario);
+    setEliminando(false);
+    if (result.success) {
+      const devueltos = result.data?.bloquesDevueltos || 0;
+      toast.success(
+        devueltos > 0
+          ? `Pedido #${aEliminar.id} eliminado. ${entero(devueltos)} bloques regresaron al inventario`
+          : `Pedido #${aEliminar.id} eliminado`
+      );
+      setPedidos((prev) => prev.filter((p) => p.id !== aEliminar.id));
+      setAEliminar(null);
+    } else {
+      toast.error(result.message);
+    }
+  };
 
   useEffect(() => {
     let activo = true;
@@ -284,13 +314,25 @@ export default function SeguimientoPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-4 text-center">
-                      <Link
-                        href={`/dashboard/seguimiento/${p.id}`}
-                        className="btn btn-secondary inline-flex items-center gap-1.5 text-xs tracking-wide px-3 py-1.5 whitespace-nowrap"
-                      >
-                        Gestionar pedido <ArrowRight size={13} />
-                      </Link>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Link
+                          href={`/dashboard/seguimiento/${p.id}`}
+                          className="btn btn-secondary inline-flex items-center gap-1.5 text-xs tracking-wide px-3 py-1.5 whitespace-nowrap"
+                        >
+                          Gestionar pedido <ArrowRight size={13} />
+                        </Link>
+                        {!p.cerrado && (
+                          <button
+                            onClick={() => pedirEliminar(p)}
+                            className="btn-icon btn-icon-danger p-1.5"
+                            title="Eliminar pedido"
+                            aria-label={`Eliminar pedido #${p.id}`}
+                          >
+                            <Trash2 size={16} strokeWidth={1.6} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -304,6 +346,72 @@ export default function SeguimientoPage() {
             : `Mostrando ${filtrados.length} de ${activos.length} pedidos activos`}
         </div>
       </div>
+
+      {/* ========== MODAL ELIMINAR PEDIDO ========== */}
+      {aEliminar && (
+        <div className="modal-backdrop fixed inset-0 bg-graphite/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md p-8">
+            <div className="flex items-start gap-3 mb-5">
+              <AlertTriangle size={22} className="text-alert-deep shrink-0 mt-1" />
+              <div>
+                <h3 className="font-display text-2xl text-ink">Eliminar pedido #{aEliminar.id}</h3>
+                <p className="text-sm text-muted mt-1">
+                  {aEliminar.cliente} — {entero(aEliminar.cantidad_total)} × {nombreBloque(aEliminar.tipo_bloque)} ·{' '}
+                  {dinero(aEliminar.total)}
+                </p>
+              </div>
+            </div>
+
+            {aEliminar.cantidad_entregada > 0 || aEliminar.total_abonado > 0 ? (
+              <div className="space-y-4 mb-6">
+                <p className="text-sm text-ink-soft">
+                  Este pedido tiene historial. Al eliminarlo también se borrarán:
+                </p>
+                <ul className="text-sm text-ink-soft list-disc pl-5 space-y-1">
+                  {aEliminar.cantidad_entregada > 0 && (
+                    <li>Las entregas: {entero(aEliminar.cantidad_entregada)} bloques entregados.</li>
+                  )}
+                  {aEliminar.total_abonado > 0 && <li>Los abonos: {dinero(aEliminar.total_abonado)} cobrados.</li>}
+                  <li>Esas ventas y cobros dejarán de aparecer en Dashboard y Reportes.</li>
+                </ul>
+                {aEliminar.cantidad_entregada > 0 && (
+                  <label className="flex items-start gap-3 px-4 py-3 border border-brand-line bg-concrete-50 rounded-[6px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={devolverInventario}
+                      onChange={(e) => setDevolverInventario(e.target.checked)}
+                      className="mt-1 accent-[#f28c28]"
+                    />
+                    <span className="text-sm text-ink-soft">
+                      Devolver los {entero(aEliminar.cantidad_entregada)} bloques entregados al inventario
+                      <span className="block text-xs text-muted mt-0.5">
+                        Déjelo marcado si las entregas fueron un error. Desmárquelo si los bloques sí salieron de la planta.
+                      </span>
+                    </span>
+                  </label>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-soft mb-6">El pedido no tiene entregas ni abonos registrados.</p>
+            )}
+
+            <p className="text-xs text-alert-deep mb-5">Esta acción no se puede deshacer.</p>
+
+            <div className="flex gap-3">
+              <button onClick={() => setAEliminar(null)} className="btn btn-secondary flex-1 py-3 text-sm">
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEliminar}
+                disabled={eliminando}
+                className="btn btn-danger flex-1 py-3 text-sm tracking-wide"
+              >
+                {eliminando ? 'Eliminando...' : 'Eliminar pedido'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========== MODAL NUEVO PEDIDO ========== */}
       {showModal && (
